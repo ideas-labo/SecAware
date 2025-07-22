@@ -55,7 +55,7 @@ Below are the repositories of the SOTA bechmarks and automated tools evaluated a
 
 - **RQ2 Ablation**: Compare the differences when the key component rules are uesd or not used:
 
-- **RQ3 Prompt Pattern Study**: Analyze the sensitivity of the key parameter $l$, and set it to 5, 10, 15 or 20:
+- **RQ3 Prompt Pattern Study**:
 
 - **RQ4 Explainability Case Study**:
 
