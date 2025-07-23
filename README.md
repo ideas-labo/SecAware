@@ -129,3 +129,8 @@ To visualize the evaluation result, simply execute rq3_eval.py.
 ## RQs
 
 Experiment results of our paper.
+
+## Acknowledgment
+
+[LLM-fuzzer](https://github.com/sherdencooper/GPTFuzz)
+[PuprleLlama](https://github.com/meta-llama/PurpleLlama)
