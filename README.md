@@ -10,6 +10,11 @@ This repository contains the data and code for the following paper:
 
 > In this paper, we propose SecAware, an automated testing tool that perturbs the test cases (task prompts), specifically designed for revealing the capability of secure code generation by LLMs. SecAware is special such that it relies on three levels of awareness with reinforcement: context, weakness, and diversity. The weakness awareness is reinforced, supported by the other two awareness levels, to strike the task prompts and vulnerability types that are the most likely to reveal issues in the target LLM. Experiment on six popular LLMs and five other approaches reveals that SecAware achieves significantly better results in terms of testing effectiveness and efficiency with up to 5.63× improvements on testing success rate. It also reveals previously unknown patterns in the capability of the LLMs in secure code generation.
 
+## Method
+
+![SecAware Method Overview](./arch.png)
+_Figure: The overall framework of SecAware._
+
 ## Code Structure
 
 - datasets => This directory includes extracted knowledge used in our method, and initial seed pool to start with.<br>
@@ -19,17 +24,21 @@ This repository contains the data and code for the following paper:
 - requirements.txt => Essential requirments need to be installed <br>
 
 ## LLMs
+
 We evaluated our method on these LLMs:
 
-| Model                | Size     | Type         |
-|----------------------|----------|--------------|
-| CodeLlama            | 7B       | Code Specific|
-| DeepSeek-Coder       | 33B      | Code Specific|
-| Llama3               | 8B       | General      |
-| Mistral              | 7B       | General      |
-| Phi-4                | 8B       | General      |
-| Qwen2.5-Coder        | 7B       | Code Specific|
+| Model          | Size | Type          | Reference                                                                      |
+| -------------- | ---- | ------------- | ------------------------------------------------------------------------------ |
+| CodeLlama      | 7B   | Code Specific | [HugggingFace](https://huggingface.co/codellama)                               |
+| DeepSeek-Coder | 33B  | Code Specific | [HugggingFace](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct) |
+| Llama3         | 8B   | General       | [Meta](https://ai.meta.com/blog/meta-llama-3/)                                 |
+| Mistral        | 7B   | General       | [HugggingFace](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2)      |
+| Phi-4          | 8B   | General       | [HugggingFace](https://huggingface.co/microsoft/phi-4)                         |
+| Qwen2.5-Coder  | 7B   | Code Specific | [HugggingFace](https://huggingface.co/spaces/Qwen/Qwen2.5-Coder-7B-Instruct)   |
 
+We support both api and local-deploy method in the llm/llm.py. We recommend using [ollama](https://ollama.com/) to pull these models for a quick evaluation.
+
+We use [Qwen2.5-7B-Instruct-1M](https://bailian.console.aliyun.com/?tab=model#/model-market/detail/qwen2.5-7b-instruct-1m) as the perturbation LLM in our experiments.
 
 ## <a name='quick-start'></a> Quick Start
 
@@ -67,7 +76,46 @@ Below are the repositories of the SOTA bechmarks and automated tools evaluated a
 
 - **RQ1 Effectiveness**: To measure the effectiveness of our method, you can directly run [Quick Start](#quick-start). The other SOTA methods being compared are described in [Compared Methods](#Sotas).
 
-- **RQ2 Ablation**: You can choose a selection policy by setting --select_policy of run.py script to one of the following options: 'ucb', 'mcts', 'mcts_cwe', or 'random'. Each option represents a different strategy for selection, allowing for comparative evaluation of their performance.
+- **RQ2 Ablation**: You can specify a selection policy by setting the `--select_policy` argument in the `run.py` script. The available options are:
+
+- `'ucb'`: Uses the **Upper Confidence Bound** strategy.
+- `'mcts'`: Applies the **MCTS-Explore** strategy.
+- `'mcts_cwe'`: Uses our **MCTS-ExploreCWE**, an enhanced version that incorporates context-awareness.
+
+Each policy represents a distinct selection strategy, enabling comparative evaluation of their effectiveness.
+
+```
+python3 -u run.py \
+    --api_key 'sk-' \
+    --model_path qwen2.5-7b-instruct-1m\
+    --target_model "codellama:7b" \
+    --select_policy mcts \
+    --max_query 1000 \
+```
+
+> ### 📌 Argument Descriptions
+>
+> - `--api_key`: API key used to access an external LLM service (e.g., OpenAI, Zhipu, Ali), which provides the **Mutator LLM**.
+> - `--model_path`: Specifies the **Mutator LLM model name** to be used via API (e.g., `qwen2.5-7b-instruct-1m`).
+> - `--target_model`: The target model to evaluate against.
+> - `--select_policy`: The selection policy to use (`ucb`, `mcts`, or `mcts_cwe`).
+> - `--max_query`: Maximum number of queries allowed during evaluation.
+
+To evaluate the effect of our method without certain key components, we provide two ablation versions of the script:
+
+- `without-C.py`: Removes the **context-awareness module**.
+- `without-D.py`: Removes the **two-level perturbation mechanism**.
+
+These scripts can be executed with the same arguments as `run.py`. For example:
+
+```
+python3 -u without-C.py \
+    --api_key 'sk-' \
+    --model_path qwen2.5-7b-instruct-1m \
+    --target_model "codellama:7b" \
+    --select_policy mcts_cwe \
+    --max_query 1000
+```
 
 - **RQ3 Prompt Pattern Study**: The script rq3_eval.py uses the LLM-as-a-judge approach to evaluate the complexity of prompt tasks. You need a DeepSeek api key start this procedure.
 
@@ -77,7 +125,6 @@ python3 rq3_query.py --api-key sk-xxxx --input-csv  /path/to/result_to_evaluate.
 ```
 
 To visualize the evaluation result, simply execute rq3_eval.py.
-
 
 ## RQs
 

@@ -36,7 +36,7 @@ async def main(args):
     task_file = args.task_path
 
 
-    mutator_model = QwenLLM(args.model_path, args.api_key,temperature=0.7)
+    mutator_model = QwenLLM(args.model_path, args.api_key, temperature=0.7)
 
     target_model = LocalOllamaLLM(args.target_model)
 
