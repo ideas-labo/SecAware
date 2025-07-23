@@ -55,14 +55,13 @@ def plot_cumulative_difference_analysis_individual(success_df, failure_df, compl
     """
     为每个复杂度维度单独绘制累积分布差异分析图
     """
-    # 设置全局字体大小
     plt.rcParams.update({
-        'font.size': 22,        # 基础字体大小
-        'axes.titlesize': 22,   # 图标题
-        'axes.labelsize': 22,   # 轴标签
-        'xtick.labelsize': 22,  # x轴刻度标签
-        'ytick.labelsize': 22,  # y轴刻度标签
-        'legend.fontsize': 22,  # 图例
+        'font.size': 22,        
+        'axes.titlesize': 22,   
+        'axes.labelsize': 22,   
+        'xtick.labelsize': 22,  
+        'ytick.labelsize': 22,  
+        'legend.fontsize': 22,  
     })
     
     dimension_names = {
@@ -75,7 +74,7 @@ def plot_cumulative_difference_analysis_individual(success_df, failure_df, compl
     }
     
     for dim in complexity_dimensions:
-        # 为每个维度创建新的图形
+
         plt.figure(figsize=(10, 8))
         
         if len(success_df) > 0 and len(failure_df) > 0:
@@ -83,7 +82,6 @@ def plot_cumulative_difference_analysis_individual(success_df, failure_df, compl
             failure_data = failure_df[dim].dropna()
             
             if len(success_data) > 0 and len(failure_data) > 0:
-                # 创建共同的x轴范围
                 min_val = min(success_data.min(), failure_data.min())
                 max_val = max(success_data.max(), failure_data.max())
                 x_range = np.linspace(min_val, max_val, 200)
