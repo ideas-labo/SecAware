@@ -456,7 +456,7 @@ class QwenLLM(LLM):
                 return [results.choices[i].message.content for i in range(n)]
             except Exception as e:
                 logging.warning(
-                    f"DeepSeek API call failed due to {e}. Retrying {_+1} / {max_trials} times...")
+                    f"API call failed due to {e}. Retrying {_+1} / {max_trials} times...")
                 time.sleep(failure_sleep_time)
 
         return [" " for _ in range(n)]
