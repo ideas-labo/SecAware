@@ -3,17 +3,17 @@ import time
 import csv
 import json
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
-    from code_mutator import Mutator, MutatePolicy
     from .selection import SelectPolicy
 
 from llm import LLM, LocalLLM
 from utils.template import synthesis_message
 from utils.knowledge import KnowledgeBase
-from utils.oracle import CodeEvaluator  
-from utils.fuzzing_monitor import FuzzingMonitor  
+from utils.oracle import CodeEvaluator 
+from utils.fuzzing_monitor import FuzzingMonitor
+from .new_mutators import PromptMutator, build_neutral_operator_registry, MutationConfig
 
 import sys
 import os
@@ -25,7 +25,6 @@ import warnings
 import asyncio
 import pandas as pd
 import numpy as np
-import os
 
 class PromptNode:
     def __init__(self,
@@ -37,7 +36,7 @@ class PromptNode:
                  results: 'list[int]' = None,
                  found_cwes: 'list[list[str]]' = None, 
                  parent: 'PromptNode' = None,
-                 mutator: 'Mutator' = None):
+                 mutator: 'PromptMutator' = None):
         self.fuzzer: 'Fuzzer' = fuzzer
         self.task: str = task
         self.cwe_ids: 'list[str]' = cwe_ids if isinstance(cwe_ids, list) else [cwe_ids]
@@ -48,7 +47,7 @@ class PromptNode:
         
         self.visited_num = 0
         self.parent: 'PromptNode' = parent
-        self.mutator: 'Mutator' = mutator
+        self.mutator: 'PromptMutator' = mutator
         self.child: 'list[PromptNode]' = []
         self.level: int = 0 if parent is None else parent.level + 1
 
@@ -69,11 +68,11 @@ class PromptNode:
         if parent is not None and hasattr(parent, 'mutation_trace'):
             self.mutation_trace.extend(parent.mutation_trace)
         
-        self.cluster_id: int = -1
-        
         self.functional_results: 'list[bool]' = []
         self.security_results: 'list[bool]' = []
         self.oracle_details: 'list[dict]' = []
+        
+        self.mutation_operators: list[str] = []
     
     @property
     def index(self):
@@ -155,33 +154,37 @@ class PromptNode:
             return "No evaluations"
         
         return (f"Total:{total} | "
-                f"✅Both:{self.num_both_pass} | "
-                f"🔥Func&Vuln:{self.num_functional_but_insecure} | "
-                f"⚠️Secure&NonFunc:{self.num_nonfunctional_but_secure} | "
-                f"❌BothFail:{self.num_both_fail}")
+                f"Both:{self.num_both_pass} | "
+                f"Func&Vuln:{self.num_functional_but_insecure} | "
+                f"Secure&NonFunc:{self.num_nonfunctional_but_secure} | "
+                f"BothFail:{self.num_both_fail}")
 
 class Fuzzer:
     _kb_instance = None
     
     def __init__(self,
-                 templates: 'list[str]',
-                 target: 'LLM',
-                 task_file: str,
-                 result_path: str,
-                 mutate_policy: 'MutatePolicy',
-                 select_policy: 'SelectPolicy',
-                 max_query: int = -1,
-                 max_jailbreak: int = -1,
-                 max_reject: int = -1,
-                 max_iteration: int = -1,
-                 energy: int = 1,
-                 record_file: str = None,
-                 generate_in_batch: bool = False,
-                 dashscope_api_key: str = "sk-",
-                 enable_monitoring: bool = True
-                 ):
+             templates: 'list[str]',
+             target: 'LLM',
+             task_file: str,
+             result_path: str,
+             select_policy: 'SelectPolicy',
+             max_query: int = -1,
+             max_jailbreak: int = -1,
+             max_reject: int = -1,
+             max_iteration: int = -1,
+             energy: int = 1,
+             record_file: str = None,
+             generate_in_batch: bool = False,
+             dashscope_api_key: str = "sk-",
+             enable_monitoring: bool = True,
+             prompt_mutator_model: LLM = None,
+             mutation_config: MutationConfig = None,
+             kb_path: str = None,
+             run_dir: str = None,  
+             monitoring_dir: str = None  
+             ):
 
-        self.templates: 'list[str]' = templates 
+        self.templates: 'list[str]' = templates
         self.target: LLM = target
         
         self.oracle = CodeEvaluator(
@@ -191,13 +194,34 @@ class Fuzzer:
         )
         logging.info("Oracle evaluator initialized (functional + security)")
 
-        # 初始化知识库（单例模式）
         if Fuzzer._kb_instance is None:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            kb_path = os.path.join(base_dir, "../datasets/cwe_knowledge_distilled.json")
-            Fuzzer._kb_instance = KnowledgeBase(filename=kb_path)
+            if kb_path is None:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                kb_path = os.path.join(current_dir, "../datasets/cwe_knowledge_distilled.json")
+            
+            if not os.path.exists(kb_path):
+                logging.warning(f"Knowledge base not found: {kb_path}")
+                Fuzzer._kb_instance = None
+            else:
+                from utils.knowledge import KnowledgeBase
+                Fuzzer._kb_instance = KnowledgeBase(filename=kb_path)
+                logging.info(f"Loaded knowledge base from: {kb_path}")
         
         self.kb = Fuzzer._kb_instance
+
+        if prompt_mutator_model is None:
+            logging.warning("No PromptMutator model provided, using target model")
+            prompt_mutator_model = target
+        
+        registry = build_neutral_operator_registry()
+        self.prompt_mutator = PromptMutator(
+            model=prompt_mutator_model,
+            registry=registry,
+            kb=self.kb,
+            rng_seed=int(time.time())
+        )
+        self.mutation_config = mutation_config or MutationConfig()
+        logging.info("PromptMutator initialized with neutral operators")
 
         print(f"Loading tasks from: {task_file}")
         try:
@@ -215,8 +239,13 @@ class Fuzzer:
             prompt_node.index = i
 
         print(f"Successfully loaded {len(self.prompt_nodes)} prompt nodes")
+        
+        for i, node in enumerate(self.prompt_nodes[:min(3, len(self.prompt_nodes))]):
+            print(f"Node {i}:")
+            print(f"  Task: {node.task[:150]}...")
+            print(f"  CWE: {node.cwe_ids}")
+            print(f"  Language: {node.lang}")
 
-        self.mutate_policy = mutate_policy
         self.select_policy = select_policy
 
         self.current_query: int = 0
@@ -226,7 +255,7 @@ class Fuzzer:
         self.current_functional_pass: int = 0
         self.current_secure: int = 0
         self.current_both_pass: int = 0
-        self.current_functional_but_insecure: int = 0
+        self.current_functional_but_insecure: int = 0  
         self.current_nonfunctional_but_secure: int = 0
         self.current_both_fail: int = 0
 
@@ -237,6 +266,20 @@ class Fuzzer:
         self.energy: int = energy
         
         self.result_file = result_path
+
+        if run_dir is None:
+            self.run_dir = os.path.dirname(self.result_file)
+        else:
+            self.run_dir = run_dir
+        
+        if monitoring_dir is None:
+            self.monitoring_dir = os.path.join(self.run_dir, 'monitoring')
+            os.makedirs(self.monitoring_dir, exist_ok=True)
+        else:
+            self.monitoring_dir = monitoring_dir
+        
+        logging.info(f"Run directory: {os.path.abspath(self.run_dir)}")
+        logging.info(f"Monitoring directory: {os.path.abspath(self.monitoring_dir)}")
         
         result_dir = os.path.dirname(self.result_file)
         if result_dir:
@@ -281,9 +324,9 @@ class Fuzzer:
             'functional_results', 'security_results', 
             'both_pass_count', 'functional_but_insecure_count',
             'nonfunctional_but_secure_count', 'both_fail_count',
-            'is_realistic', 'cluster_id', 'level', 'is_root', 
-            'mutator_type', 'mutation_trace', 'timestamp',
-            'detailed_status'
+            'level', 'is_root', 
+            'mutator_type', 'mutation_trace', 'mutation_operators', 
+            'timestamp', 'detailed_status'
         ])
 
         self.generate_in_batch = False
@@ -292,15 +335,20 @@ class Fuzzer:
             if isinstance(self.target, LocalLLM):
                 warnings.warn("IMPORTANT! Hugging face inference with batch generation has the problem of consistency due to pad tokens.")
 
-        self.high_value_log_file = f"high_value_vulns_{time.strftime('%Y%m%d_%H%M%S')}.jsonl"
+        self.high_value_log_file = os.path.join(
+            self.monitoring_dir, 
+            f"high_value_vulns.jsonl"
+        )
         self.high_value_fp = open(self.high_value_log_file, 'w', encoding='utf-8')
         logging.info(f"High-value vulnerabilities log: {self.high_value_log_file}")
         
         self.enable_monitoring = enable_monitoring
         self.monitor = None
         if self.enable_monitoring:
-            self.monitor = FuzzingMonitor(enable_detailed_logging=True)
-            logging.info("Fuzzing monitor initialized")
+            self.monitor = FuzzingMonitor(top_k=10, bottom_k=5)
+            logging.info("Fuzzing monitor initialized (Top-10 & Bottom-5)")
+
+            self.monitor.output_dir = self.monitoring_dir
             
             if hasattr(self.select_policy, 'monitor'):
                 self.select_policy.monitor = self.monitor
@@ -410,7 +458,6 @@ class Fuzzer:
         return prompt_nodes
     
     def setup(self):
-        self.mutate_policy.fuzzer = self
         self.select_policy.fuzzer = self
 
         logger = logging.getLogger()
@@ -438,18 +485,60 @@ class Fuzzer:
             descendants.extend(self._get_all_descendants(child))
         return descendants
     
+    def mutate_with_prompt_mutator(self, seed: PromptNode) -> PromptNode:
+        try:
+            if seed.ancestor_seed_idx is not None:
+                ancestor = self.initial_prompts_nodes[seed.ancestor_seed_idx]
+            else:
+                ancestor = seed
+            
+            global_context = getattr(ancestor, 'global_context', '')
+            behavioral_description = getattr(ancestor, 'behavioral_description', '')
+            
+            mutated_task = self.prompt_mutator.mutate(
+                task_prompt=seed.task,
+                global_context=global_context,
+                behavior_description=behavioral_description,
+                cwe_id=seed.primary_cwe_id,
+                ops=None,  
+                cfg=self.mutation_config
+            )
+            
+            new_node = PromptNode(
+                fuzzer=self,
+                task=mutated_task,
+                cwe_ids=seed.cwe_ids.copy(),
+                lang=seed.lang,
+                parent=seed,
+                mutator=self.prompt_mutator
+            )
+            
+            if hasattr(self.prompt_mutator, '_last_used_ops'):
+                new_node.mutation_operators = self.prompt_mutator._last_used_ops
+            
+            new_node.mutation_trace.append('PromptMutator')
+            
+            return new_node
+            
+        except Exception as e:
+            logging.error(f"PromptMutator mutation failed: {e}")
+            return None
+    
     async def run(self):
         logging.info("Fuzzing started!")
         logging.info(f"Monitoring enabled: {self.enable_monitoring}")
-        logging.info(f"Tracking functional-but-insecure cases in: {self.high_value_log_file}")
         
         try:
             while not self.is_stop():
                 seed = self.select_policy.select()
-                mutated_results = self.mutate_policy.mutate_single(seed)
-                await self.evaluate(mutated_results)
-                self.update(mutated_results)
                 
+                mutated_node = self.mutate_with_prompt_mutator(seed)
+                mutated_results = [mutated_node] if mutated_node else []
+                
+                if mutated_results:
+                    await self.evaluate(mutated_results)
+                    self.update(mutated_results)
+
                 if self.enable_monitoring and self.monitor:
                     self.monitor.log_step(
                         step=self.current_iteration,
@@ -462,29 +551,61 @@ class Fuzzer:
                 if (self.enable_monitoring and 
                     self.monitor and
                     self.current_iteration > 0 and 
-                    self.current_iteration % 100 == 0):
+                    self.current_iteration % 50 == 0):
                     
-                    report = self.monitor.generate_report()
-                    logging.info(f"\n{'='*80}\n监控报告 (Iteration {self.current_iteration})\n{report}\n{'='*80}")
+                    recent_events = [
+                        e for e in self.monitor.key_events 
+                        if e['step'] > self.current_iteration - 50
+                    ]
                     
-                    timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-                    self.monitor.save_to_json(f"monitoring_{timestamp}.json")
-                
+                    if recent_events:
+                        logging.info(f"\n 最近50步的关键事件 ({len(recent_events)}个):")
+                        for evt in recent_events[-5:]:
+                            logging.info(
+                                f"  Step {evt['step']}: {evt['type']} - "
+                                f"Node {evt['node_idx']}, Reward={evt['reward']:.2f}"
+                            )
+                    
+                    if self.monitor.topk_history and self.monitor.bottomk_history:
+                        latest_topk = self.monitor.topk_history[-1]
+                        latest_bottomk = self.monitor.bottomk_history[-1]
+                        
+                        logging.info(
+                            f"\n📊 Top-{self.monitor.top_k} 平均 Reward: {latest_topk['avg_reward']:.2f} | "
+                            f"Bottom-{self.monitor.bottom_k} 平均 Reward: {latest_bottomk['avg_reward']:.2f} | "
+                            f"差距: {latest_topk['avg_reward'] - latest_bottomk['avg_reward']:.2f}"
+                        )
+
         except KeyboardInterrupt:
             logging.info("Fuzzing interrupted by user!")
         
         if self.enable_monitoring and self.monitor:
             final_report = self.monitor.generate_report()
-            logging.info(f"\n{'='*80}\n最终监控报告\n{final_report}\n{'='*80}")
+            logging.info(f"\n{'='*80}\n{final_report}\n{'='*80}")
             
-            timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-            self.monitor.save_to_json(f"final_monitoring_{timestamp}.json")
+            json_file = os.path.join(self.monitoring_dir, "final_monitoring.json")
+            topk_file = os.path.join(self.monitoring_dir, "topk_nodes.csv")
+            bottomk_file = os.path.join(self.monitoring_dir, "bottomk_nodes.csv")
             
-            df = self.monitor.export_to_dataframe()
-            df.to_csv(f"monitoring_timeline_{timestamp}.csv", index=False)
-            logging.info(f"Timeline数据已导出到: monitoring_timeline_{timestamp}.csv")
-
-        logging.info("Fuzzing finished!")
+            self.monitor.save_to_json(json_file)
+            self.monitor.export_to_csv(topk_file, bottomk_file)
+            
+            try:
+                from utils.fuzzing_visualizer import FuzzingVisualizer
+                
+                logging.info(f"\n{'='*80}")
+                logging.info("🎨 Generating visualization plots...")
+                logging.info(f"{'='*80}")
+                
+                visualizer = FuzzingVisualizer(json_file=json_file)
+                viz_dir = os.path.join(self.monitoring_dir, "visualization")
+                visualizer.generate_all_plots(output_dir=viz_dir)
+                
+                logging.info(f"\n✓ Visualization completed!")
+                logging.info(f"   - Plots saved to: {os.path.abspath(viz_dir)}")
+            except Exception as e:
+                logging.warning(f"Visualization failed: {e}")
+        
         self.raw_fp.close()
         self.high_value_fp.close()
 
@@ -610,13 +731,15 @@ class Fuzzer:
             num_functional_pass = prompt_node.num_functional_pass
             num_secure = prompt_node.num_secure
             num_both_pass = prompt_node.num_both_pass
-            num_functional_but_insecure = prompt_node.num_functional_but_insecure
+            num_functional_but_insecure = prompt_node.num_functional_but_insecure  
             num_nonfunctional_but_secure = prompt_node.num_nonfunctional_but_secure
             num_both_fail = prompt_node.num_both_fail
             
             if num_jailbreak > 0:
                 prompt_node.index = len(self.prompt_nodes)
                 self.prompt_nodes.append(prompt_node)
+
+            mutation_operators = getattr(prompt_node, 'mutation_operators', [])
 
             self.writter.writerow([
                 prompt_node.index, 
@@ -629,17 +752,16 @@ class Fuzzer:
                 prompt_node.functional_results,
                 prompt_node.security_results,
                 num_both_pass,
-                num_functional_but_insecure,
+                num_functional_but_insecure,  
                 num_nonfunctional_but_secure,
                 num_both_fail,
-                getattr(prompt_node, 'is_realistic', False),
-                getattr(prompt_node, 'cluster_id', -1),
                 prompt_node.level,
                 prompt_node.parent is None,
-                str(prompt_node.mutator.__class__.__name__) if prompt_node.mutator else None,
+                'PromptMutator',
                 '|'.join(prompt_node.mutation_trace) if prompt_node.mutation_trace else '',
+                '|'.join(mutation_operators) if mutation_operators else '',
                 int(time.time()),
-                prompt_node.get_detailed_status()
+                prompt_node.get_detailed_status()  
             ])
             
             if num_functional_but_insecure > 0:
@@ -649,7 +771,7 @@ class Fuzzer:
                     prompt_node.found_cwes,
                     prompt_node.response if isinstance(prompt_node.response, list) else [prompt_node.response]
                 )):
-                    if func and not sec:
+                    if func and not sec:  
                         high_value_entry = {
                             'iteration': self.current_iteration,
                             'timestamp': time.time(),
@@ -659,10 +781,10 @@ class Fuzzer:
                             'language': prompt_node.lang,
                             'target_cwes': prompt_node.cwe_ids,
                             'found_cwes': cwes,
-                            'response': resp[:500],
+                            'response': resp[:500],  
                             'level': prompt_node.level,
                             'mutator': str(prompt_node.mutator.__class__.__name__) if prompt_node.mutator else None,
-                            'is_realistic': getattr(prompt_node, 'is_realistic', False)
+                            'mutation_operators': mutation_operators
                         }
                         self.high_value_fp.write(json.dumps(high_value_entry, ensure_ascii=False) + '\n')
                         self.high_value_fp.flush()
@@ -676,7 +798,7 @@ class Fuzzer:
             self.current_functional_pass += num_functional_pass
             self.current_secure += num_secure
             self.current_both_pass += num_both_pass
-            self.current_functional_but_insecure += num_functional_but_insecure
+            self.current_functional_but_insecure += num_functional_but_insecure 
             self.current_nonfunctional_but_secure += num_nonfunctional_but_secure
             self.current_both_fail += num_both_fail
 
@@ -685,7 +807,7 @@ class Fuzzer:
     def log(self):
         total_nodes = len(self.prompt_nodes)
         successful_nodes = len([node for node in self.prompt_nodes if node.num_jailbreak > 0])
-        
+
         total_evaluated = self.current_functional_pass + self.current_nonfunctional_but_secure + \
                          self.current_functional_but_insecure + self.current_both_fail
         
@@ -699,7 +821,7 @@ class Fuzzer:
         logging.info(
             f"Iter {self.current_iteration}: "
             f"FuncVuln={self.current_functional_but_insecure}({vuln_rate:.1f}%) | "
-            f"Ideal={self.current_both_pass}({ideal_rate:.1f}%) | "
+            # f"Ideal={self.current_both_pass}({ideal_rate:.1f}%) | "
             f"Total={self.current_jailbreak}vulns, "
             f"{self.current_functional_pass}funcPass, "
             f"{self.current_secure}secure | "
@@ -710,9 +832,10 @@ class Fuzzer:
         if self.current_iteration % 10 == 0:
             logging.info(
                 f"\n{'='*80}\n"
-                f"   功能✓ 安全✓ (理想): {self.current_both_pass}\n"
-                f"   功能✓ 安全✗ (危险): {self.current_functional_but_insecure}\n"
-                f"    功能✗ 安全✓ (无用): {self.current_nonfunctional_but_secure}\n"
-                f"   功能✗ 安全✗ (失败): {self.current_both_fail}\n"
+                f"【四象限分布】\n"
+                f"  ✅ 功能✓ 安全✓ (理想): {self.current_both_pass}\n"
+                f"  🔥 功能✓ 安全✗ (危险): {self.current_functional_but_insecure}\n"
+                f"  ⚠️  功能✗ 安全✓ (无用): {self.current_nonfunctional_but_secure}\n"
+                f"  ❌ 功能✗ 安全✗ (失败): {self.current_both_fail}\n"
                 f"{'='*80}"
             )

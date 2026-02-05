@@ -2,7 +2,7 @@ import random
 import json
 from .code_core import Fuzzer, PromptNode
 from utils.template import synthesis_message
-from utils.openai import openai_request
+from utils.openai_utils import openai_request
 from utils.template import QUESTION_PLACEHOLDER
 from llm import OpenAILLM, LLM
 from utils.prompt import *
@@ -31,7 +31,7 @@ class Mutator:
 
 class OpenAIMutatorBase(Mutator):
     def __init__(self,
-                 model: 'OpenAILLM',
+                 model: 'LLM',  # 修改类型提示，支持更广泛的LLM类型
                  temperature: int = 1,
                  max_tokens: int = 512,
                  max_trials: int = 100,
@@ -46,15 +46,36 @@ class OpenAIMutatorBase(Mutator):
         self.failure_sleep_time = failure_sleep_time
 
     def mutate_single(self, seed) -> 'list[str]':
-        # print("Mutating with OpenAI model...")
-        # print(f"Seed: {seed}")
-        return self.model.generate(seed, self.temperature, self.max_tokens)
+        # 确保 seed 是字符串或 PromptNode
+        if hasattr(seed, 'task'):
+            prompt_text = seed.task
+        elif isinstance(seed, str):
+            prompt_text = seed
+        else:
+            prompt_text = str(seed)
+            
+        print(f"Mutating with prompt: {prompt_text[:100]}...")
+        
+        try:
+            # 调用模型生成
+            result = self.model.generate(prompt_text, self.temperature, self.max_tokens)
+            
+            # 确保返回字符串列表
+            if isinstance(result, str):
+                return [result]
+            elif isinstance(result, list):
+                return [str(r) for r in result]
+            else:
+                return [str(result)]
+                
+        except Exception as e:
+            print(f"Generation error in {self.__class__.__name__}: {e}")
+            return [prompt_text]  # 失败时返回原始输入
 
     def _format_prompt(self, template, **kwargs):
         try:
             return template.format(**kwargs)
         except KeyError as e:
-            # debug
             print("Formatting with keys:", list(kwargs.keys()))
             print(f"Prompt formatting error: missing parameter {e}")
             return ""
@@ -413,9 +434,6 @@ class CWEProgressiveThreatMutatePolicy(MutatePolicy):
         all_mutators = guided_mutators + adversarial_mutators
         super().__init__(all_mutators, fuzzer) 
 
-        if fuzzer is not None:
-            self.set_fuzzer(fuzzer)
-
         for mutator in guided_mutators:
             if not isinstance(mutator, (OpenAIMutatorCrossOverCode, OpenAIMutatorGuidedGenerate,
                                         OpenAIMutatorGuidedMutation, OpenAIMutatorGuidedExpansion)):
@@ -437,31 +455,72 @@ class CWEProgressiveThreatMutatePolicy(MutatePolicy):
         if not mutator_chain:
             raise ValueError("No valid mutator in either guided or adversarial list")
 
-        # 与 ChainedMutatePolicy 中 mutate_single 的逻辑一致：
-        results = [prompt_node.task]
+        # 修复：正确处理变异链
+        current_nodes = [prompt_node]  # 从 PromptNode 开始，而不是字符串
         mutation_trace = prompt_node.mutation_trace.copy()
-        last_mutator = prompt_node.mutator
-
-        for mutator in mutator_chain:
-            new_results = []
-            for result in results:
-                temp_node = PromptNode(self.fuzzer, result, prompt_node.cwe_ids,
-                                       prompt_node.lang, parent=prompt_node,
-                                       mutator=last_mutator)
-                mutated = mutator.mutate_single(temp_node)
-                new_results.extend(mutated)
+        
+        for i, mutator in enumerate(mutator_chain):
+            next_nodes = []
+            
+            for node in current_nodes:
+                try:
+                    # 每个 mutator 的 mutate_single 返回 list[PromptNode]
+                    mutated_nodes = mutator.mutate_single(node)
+                    
+                    # 确保返回的是 PromptNode 列表
+                    if isinstance(mutated_nodes, list):
+                        for mutated_node in mutated_nodes:
+                            if hasattr(mutated_node, 'task'):  # 确认是 PromptNode
+                                next_nodes.append(mutated_node)
+                            else:
+                                # 如果不是 PromptNode，尝试创建一个
+                                new_node = PromptNode(
+                                    self.fuzzer, 
+                                    str(mutated_node), 
+                                    node.cwe_ids,
+                                    node.lang, 
+                                    parent=node,
+                                    mutator=mutator
+                                )
+                                next_nodes.append(new_node)
+                    else:
+                        # 处理单个返回值
+                        if hasattr(mutated_nodes, 'task'):
+                            next_nodes.append(mutated_nodes)
+                        else:
+                            new_node = PromptNode(
+                                self.fuzzer, 
+                                str(mutated_nodes), 
+                                node.cwe_ids,
+                                node.lang, 
+                                parent=node,
+                                mutator=mutator
+                            )
+                            next_nodes.append(new_node)
+                            
+                except Exception as e:
+                    print(f"Error in mutator {mutator.__class__.__name__}: {e}")
+                    # 如果变异失败，保留原节点
+                    next_nodes.append(node)
+            
             mutation_trace.append(mutator.__class__.__name__)
-            results = new_results
-            last_mutator = mutator
+            current_nodes = next_nodes
+            
+            print(f"After mutator {i+1} ({mutator.__class__.__name__}): {len(current_nodes)} nodes")
+            
+            # 调试：打印第一个节点的任务内容
+            if current_nodes:
+                first_task = current_nodes[0].task
+                print(f"  First node task: {first_task[:100] if isinstance(first_task, str) else str(first_task)[:100]}...")
 
-        new_nodes = [PromptNode(self.fuzzer, result, prompt_node.cwe_ids,
-                                prompt_node.lang, parent=prompt_node,
-                                mutator=mutator_chain[-1]) for result in results]
-        for node in new_nodes:
+        # 更新所有最终节点的 mutation_trace
+        for node in current_nodes:
             node.mutation_trace = mutation_trace.copy()
+            # 确保父节点设置正确
+            if node.parent is None:
+                node.parent = prompt_node
 
-        return new_nodes
+        return current_nodes
 
     def mutate_batch(self, seeds: 'list[PromptNode]') -> 'list[list[PromptNode]]':
         return [self.mutate_single(seed) for seed in seeds]
-

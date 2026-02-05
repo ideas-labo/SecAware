@@ -2,7 +2,7 @@ import random
 import json
 from .code_core import GPTFuzzer, PromptNode
 from utils.template import synthesis_message
-from utils.openai import openai_request
+from utils.openai_utils import openai_request
 from utils.template import QUESTION_PLACEHOLDER
 from llm import OpenAILLM, LLM
 from utils.prompt import *

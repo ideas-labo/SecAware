@@ -188,146 +188,85 @@ class LocalOllamaLLM(LLM):
         return generated_responses
 
 
-class LocalVLLM(LLM):
+class LocalVLLMServer(LLM):
+    """使用 vLLM OpenAI-compatible API 服务器"""
     def __init__(self,
-                 model_path,
-                 gpu_memory_utilization=0.95,
-                 system_message=None
-                 ):
-        super().__init__()
-        self.model_path = model_path
-        self.model = vllm(
-            self.model_path, gpu_memory_utilization=gpu_memory_utilization)
-        
-        if system_message is None and 'Llama-2' in model_path:
-            self.system_message = (
-                "You are a helpful code assistant that can teach a junior developer how to code. " \
-                "Don't explain the code, just generate the code block itself. \n" \
-                "Write code for the following programming task:"
-            )
-        else:
-            self.system_message = system_message
-
-    def set_system_message(self, conv_temp):
-        if self.system_message is not None:
-            conv_temp.set_system_message(self.system_message)
-
-    def generate(self, prompt, temperature=0, max_tokens=512):
-        prompts = [prompt]
-        return self.generate_batch(prompts, temperature, max_tokens)
-
-    def generate_batch(self, prompts, temperature=0, max_tokens=512):
-        prompt_inputs = []
-        for prompt in prompts:
-            conv_temp = get_conversation_template(self.model_path)
-            self.set_system_message(conv_temp)
-
-            conv_temp.append_message(conv_temp.roles[0], prompt)
-            conv_temp.append_message(conv_temp.roles[1], None)
-
-            prompt_input = conv_temp.get_prompt()
-            prompt_inputs.append(prompt_input)
-
-        sampling_params = SamplingParams(temperature=temperature, max_tokens=max_tokens)
-        results = self.model.generate(
-            prompt_inputs, sampling_params, use_tqdm=False)
-        outputs = []
-        for result in results:
-            outputs.append(result.outputs[0].text)
-        return outputs
-
-
-class BardLLM(LLM):
-    def generate(self, prompt):
-        return
-
-class PaLM2LLM(LLM):
-    def __init__(self,
-                 model_path='chat-bison-001',
-                 api_key=None,
-                 system_message=None
+                 base_url="http://localhost:8000/v1",
+                 model_name="your-model-name",  # 启动服务时的模型名
+                 api_key="EMPTY",  # vLLM 默认不需要真实 key
+                 system_message=None,
+                 timeout=120
                 ):
         super().__init__()
         
-        if len(api_key) != 39:
-            raise ValueError('invalid PaLM2 API key')
-        
-        palm.configure(api_key=api_key)
-        available_models = [m for m in palm.list_models()]
-        for model in available_models:
-            if model.name == model_path:
-                self.model_path = model
-                break
-        self.system_message = system_message
-        # The PaLM-2 has a great rescriction on the number of input tokens, so I will release the short jailbreak prompts later
-        
-    def generate(self, prompt, temperature=0, n=1, max_trials=1, failure_sleep_time=1):
-        for _ in range(max_trials):
-            try:
-                results = palm.chat(
-                    model=self.model_path,
-                    prompt=prompt,
-                    temperature=temperature,
-                    candidate_count=n,
-                )
-                return [results.candidates[i]['content'] for i in range(n)]
-            except Exception as e:
-                logging.warning(
-                    f"PaLM2 API call failed due to {e}. Retrying {_+1} / {max_trials} times...")
-                time.sleep(failure_sleep_time)
-
-        return [" " for _ in range(n)]
-    
-    def generate_batch(self, prompts, temperature=0, n=1, max_trials=1, failure_sleep_time=1):
-        results = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = {executor.submit(self.generate, prompt, temperature, n,
-                                       max_trials, failure_sleep_time): prompt for prompt in prompts}
-            for future in concurrent.futures.as_completed(futures):
-                results.extend(future.result())
-        return results
-
-class ClaudeLLM(LLM):
-    def __init__(self,
-                 model_path='claude-instant-1.2',
-                 api_key=None
-                ):
-        super().__init__()
-        
-        if len(api_key) != 108:
-            raise ValueError('invalid Claude API key')
-        
-        self.model_path = model_path
-        self.api_key = api_key
-        self.anthropic = Anthropic(
-            api_key=self.api_key
+        self.client = OpenAI(
+            base_url=base_url,
+            api_key=api_key,
+            timeout=timeout
+        )
+        self.model_name = model_name
+        self.system_message = system_message if system_message is not None else (
+            "You are a helpful code assistant that can teach a junior developer how to code. "
+            "Don't explain the code, just generate the code block itself. \n"
+            "Write code for the following programming task:"
         )
 
-    def generate(self, prompt, max_tokens=1024, max_trials=1, failure_sleep_time=1):
-        
-        for _ in range(max_trials):
+    def generate(self, prompt, temperature=0.7, max_tokens=2048, n=1, 
+                 max_trials=3, failure_sleep_time=2):
+        """生成单个响应"""
+        for attempt in range(max_trials):
             try:
-                completion = self.anthropic.completions.create(
-                    model=self.model_path,
-                    max_tokens_to_sample=300,
-                    prompt=f"{HUMAN_PROMPT} {prompt}{AI_PROMPT}",
+                response = self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[
+                        {"role": "system", "content": self.system_message},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    n=n,
+                    stop=["<|im_end|>", "</s>"]
                 )
-                return [completion.completion]
+                
+                if n == 1:
+                    return response.choices[0].message.content
+                else:
+                    return [choice.message.content for choice in response.choices]
+                    
             except Exception as e:
                 logging.warning(
-                    f"Claude API call failed due to {e}. Retrying {_+1} / {max_trials} times...")
-                time.sleep(failure_sleep_time)
+                    f"vLLM API call failed: {e}. Retrying {attempt+1}/{max_trials}...")
+                if attempt < max_trials - 1:
+                    time.sleep(failure_sleep_time)
+        
+        return "" if n == 1 else ["" for _ in range(n)]
 
-        return [" "]
-    
-    def generate_batch(self, prompts, max_tokens=1024, max_trials=1, failure_sleep_time=1):
+    def generate_batch(self, prompts, temperature=0.7, max_tokens=2048, 
+                      max_trials=3, failure_sleep_time=2):
+        """批量生成"""
         results = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = {executor.submit(self.generate, prompt, max_tokens,
-                                       max_trials, failure_sleep_time): prompt for prompt in prompts}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(
+                    self.generate, 
+                    prompt, 
+                    temperature, 
+                    max_tokens, 
+                    1,  # n=1 for batch
+                    max_trials, 
+                    failure_sleep_time
+                ): prompt for prompt in prompts
+            }
+            
             for future in concurrent.futures.as_completed(futures):
-                results.extend(future.result())
+                try:
+                    results.append(future.result())
+                except Exception as e:
+                    logging.error(f"Batch generation error: {e}")
+                    results.append("")
+                    
         return results
+
 
 class OpenAILLM(LLM):
     def __init__(self,
@@ -425,24 +364,35 @@ class DeepSeekLLM(LLM):
 
 class QwenLLM(LLM):
     def __init__(self,
-                    model_path,
-                    api_key=None,
-                    system_message=None,
-                    temperature=0.2
+                 model_path,
+                 api_key=None,
+                 system_message=None,
+                 temperature=0.2,
+                 timeout=120  # 添加超时参数
                 ):
         super().__init__()
 
         if not api_key.startswith('sk-'):
             raise ValueError('Qwen API key should start with sk-')
 
-        self.client = OpenAI(api_key = api_key, base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+        self.client = OpenAI(
+            api_key=api_key, 
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            timeout=timeout  # 使用超时参数
+        )
         self.model_path = model_path
         self.temperature = temperature 
         self.system_message = system_message if system_message is not None else "You are a helpful assistant."
+        self.timeout = timeout  # 保存超时设置
 
     def generate(self, prompt, temperature=0.2, max_tokens=4096, n=1, max_trials=10, failure_sleep_time=5):
-        for _ in range(max_trials):
+        import random
+        for i in range(max_trials):
             try:
+                # 确保提示是字符串
+                if isinstance(prompt, list):
+                    prompt = prompt[0] if prompt else ""
+                    
                 results = self.client.chat.completions.create(
                     model=self.model_path,
                     messages=[
@@ -453,13 +403,19 @@ class QwenLLM(LLM):
                     max_tokens=max_tokens,
                     n=n,
                 )
-                return [results.choices[i].message.content for i in range(n)]
+                
+                # 只有需要多结果时返回列表，否则直接返回字符串
+                contents = [results.choices[i].message.content for i in range(n)]
+                return contents[0] if n == 1 else contents
+                
             except Exception as e:
+                # 使用指数退避策略
+                wait_time = min(30, (2 ** i) + random.uniform(0, 1))
                 logging.warning(
-                    f"API call failed due to {e}. Retrying {_+1} / {max_trials} times...")
-                time.sleep(failure_sleep_time)
+                    f"Qwen API call failed due to {e}. Retrying {i+1} / {max_trials} times after {wait_time:.1f}s...")
+                time.sleep(wait_time)
 
-        return [" " for _ in range(n)]
+        return "" if n == 1 else ["" for _ in range(n)]
 
     def generate_batch(self, prompts, temperature=0.2, max_tokens=4096, n=1, max_trials=10, failure_sleep_time=5):
         results = []
