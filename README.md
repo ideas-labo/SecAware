@@ -8,7 +8,7 @@ This repository contains the data and code for the following paper:
 
 > Large Language Models (LLMs) have become essential parts of software development due to their ability to generate code from natural instructions written in a task prompt. While highly efficient, the code they generate can, unfortunately, contain severe security vulnerabilities. Without understanding the true capability of LLMs in generating secure code, it leaves developers with great doubt in choosing the appropriate LLM and/or designing a good quality task prompt. Yet, existing approaches to evaluate a LLM to that end mostly rely on static benchmarks, which are limited to only certain tasks and the vulnerability types of the code generated.
 
-> In this paper, we propose SecAware, an automated testing tool that perturbs the test cases (task prompts), specifically designed for revealing the capability of secure code generation by LLMs. SecAware is special such that it relies on three levels of awareness with reinforcement: context, weakness, and diversity. The weakness awareness is reinforced, supported by the other two awareness levels, to strike the task prompts and vulnerability types that are the most likely to reveal issues in the target LLM. Experiment on six popular LLMs and five other approaches reveals that SecAware achieves significantly better results in terms of testing effectiveness and efficiency with up to 5.63× improvements on testing success rate. It also reveals previously unknown patterns in the capability of the LLMs in secure code generation.
+> In this paper, we propose SecAware, an automated testing tool that perturbs the test cases (task prompts), specifically designed for revealing the capability of secure code generation by LLMs. SecAware is special such that it relies on three levels of awareness with reinforcement: context, weakness, and diversity. The weakness awareness is reinforced, supported by the other two awareness levels, to strike the task prompts and vulnerability types that are the most likely to reveal issues in the target LLM. Experiment on six popular LLMs and five other approaches reveals that SecAware achieves significantly better results in terms of testing effectiveness and efficiency with up to 3.34× improvements on testing success rate. It also reveals previously unknown patterns in the capability of the LLMs in secure code generation.
 
 ## Method
 
@@ -34,11 +34,11 @@ We evaluated our method on these LLMs:
 | Llama3         | 8B   | General       | [Meta](https://ai.meta.com/blog/meta-llama-3/)                                 |
 | Mistral        | 7B   | General       | [HugggingFace](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2)      |
 | Phi-4          | 8B   | General       | [HugggingFace](https://huggingface.co/microsoft/phi-4)                         |
-| Qwen2.5-Coder  | 7B   | Code Specific | [HugggingFace](https://huggingface.co/spaces/Qwen/Qwen2.5-Coder-7B-Instruct)   |
+| Qwen2.5-Coder  | 32B   | Code Specific | [HugggingFace](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)   |
 
-We support both api and local-deploy method in the llm/llm.py. We recommend using [ollama](https://ollama.com/) to pull these models for a quick evaluation.
+We support both api and local-deploy method in the llm/llm.py. We recommend using [vllm](https://github.com/vllm-project/vllm) to serve these models for a quick evaluation.
 
-We use [Qwen2.5-7B-Instruct-1M](https://bailian.console.aliyun.com/?tab=model#/model-market/detail/qwen2.5-7b-instruct-1m) as the perturbation LLM in our experiments.
+We use [GLM-4.7](https://bailian.console.aliyun.com/cn-beijing/?tab=model#/model-market/detail/glm-4.7) as the perturbation LLM in our experiments.
 
 ## <a name='quick-start'></a> Quick Start
 
@@ -74,58 +74,99 @@ Below are the repositories of the SOTA bechmarks and automated tools evaluated a
 
 ## RQ Reproduction
 
-- **RQ1 Effectiveness**: To measure the effectiveness of our method, you can directly run [Quick Start](#quick-start). The other SOTA methods being compared are described in [Compared Methods](#Sotas).
+- **RQ1 Effectiveness**: To measure the effectiveness of our method, you can run the following command. The script supports both local model deployment and vLLM server backends.
 
-- **RQ2 Ablation**: You can specify a selection policy by setting the `--select_policy` argument in the `run.py` script. The available options are:
+```bash
+cd ./code
 
-- `'ucb'`: Uses the **Upper Confidence Bound** strategy.
-- `'mcts'`: Applies the **MCTS-Explore** strategy.
-- `'mcts_cwe'`: Uses our **MCTS-ExploreCWE**, an enhanced version that incorporates context-awareness.
+# Example 1: Using vLLM server (recommended for faster inference)
+# First, start the vLLM server in another terminal:
+# CUDA_VISIBLE_DEVICES=0,1 python -m vllm.entrypoints.openai.api_server \
+#   --model ./Qwen2.5-Coder-32B-Instruct/ \
+#   --tensor-parallel-size 2 \
+#   --port 8000
 
-Each policy represents a distinct selection strategy, enabling comparative evaluation of their effectiveness.
-
-```
-python3 -u run.py \
-    --api_key 'sk-' \
-    --model_path qwen2.5-7b-instruct-1m\
-    --target_model "codellama:7b" \
-    --select_policy mcts \
+# Then run SecAware:
+nohup python run_secaware.py \
+    --target_backend vllm_server \
+    --target_model phi4-14b/ \
+    --vllm_server_url http://localhost:8000/v1 \
+    --select_policy mcts_normalized \
+    --ablation_config full \
+    --novelty_mode log \
+    --enable_monitoring \
     --max_query 1000 \
-```
+    > "./logs/run1.log" 2>&1 &
 
-> ### 📌 Argument Descriptions
->
-> - `--api_key`: API key used to access an external LLM service (e.g., OpenAI, Zhipu, Ali), which provides the **Mutator LLM**.
-> - `--model_path`: Specifies the **Mutator LLM model name** to be used via API (e.g., `qwen2.5-7b-instruct-1m`).
-> - `--target_model`: The target model to evaluate against.
-> - `--select_policy`: The selection policy to use (`ucb`, `mcts`, or `mcts_cwe`).
-> - `--max_query`: Maximum number of queries allowed during evaluation.
-
-To evaluate the effect of our method without certain key components, we provide two ablation versions of the script:
-
-- `without-C.py`: Removes the **context-awareness module**.
-- `without-D.py`: Removes the **two-level perturbation mechanism**.
-
-These scripts can be executed with the same arguments as `run.py`. For example:
-
-```
-python3 -u without-C.py \
-    --api_key 'sk-' \
+# Example 2: Using Ollama backend
+python run_secaware.py \
+    --target_backend ollama \
+    --target_model codellama:7b \
+    --api_key 'sk-your-api-key' \
     --model_path qwen2.5-7b-instruct-1m \
-    --target_model "codellama:7b" \
-    --select_policy mcts_cwe \
+    --select_policy mcts_normalized \
     --max_query 1000
 ```
 
-- **RQ3 Prompt Pattern Study**: The script rq3_eval.py uses the LLM-as-a-judge approach to evaluate the complexity of prompt tasks. You need a DeepSeek api key start this procedure.
+> ### 📌 Key Arguments
+>
+> - `--target_backend`: Backend type (`vllm_server`, `ollama`, `local`, `qwen`)
+> - `--target_model`: Target model name or path
+> - `--vllm_server_url`: vLLM server URL (required for `vllm_server` backend)
+> - `--api_key`: API key for mutator model
+> - `--model_path`: Mutator model name (e.g., `qwen-plus`, `qwen2.5-7b-instruct-1m`)
+> - `--select_policy`: Selection policy (`mcts_normalized`, `mcts_novelty`, `mcts_cwe`, `ucb`, `mcts`, `random`)
+> - `--ablation_config`: Ablation configuration (see RQ2)
+> - `--max_query`: Maximum number of queries allowed
+> - `--enable_monitoring`: Enable detailed fuzzing monitoring
 
+The other SOTA methods being compared are described in [Compared Methods](#Sotas).
+
+- **RQ2 Ablation**: To evaluate the contribution of different components, SecAware supports ablation of both **selection strategies** and **mutation components**.
+
+**Selection Strategy Ablation:**
+
+```bash
+# Compare different selection policies
+python run_secaware.py \
+    --target_backend vllm_server \
+    --target_model llama3-8B-instruct/ \
+    --vllm_server_url http://localhost:8001/v1 \
+    --select_policy mcts_normalized \
+    --max_query 1000
+
+# Options: mcts_normalized, mcts_novelty, mcts_cwe, ucb, mcts, random
 ```
-cd ./code
-python3 rq3_query.py --api-key sk-xxxx --input-csv  /path/to/result_to_evaluate.csv --output-csv /path/to/output --batch-size 5
+
+**Mutation Component Ablation:**
+
+```bash
+# Full configuration (all components enabled)
+python run_secaware.py \
+    --target_backend vllm_server \
+    --target_model llama3-8B-instruct/ \
+    --vllm_server_url http://localhost:8001/v1 \
+    --select_policy mcts_normalized \
+    --ablation_config full \
+    --max_query 1000
+
+# Available ablation configs:
+# - full: Complete SecAware (Anchors ✅, CWE ✅, Operators ✅)
+# - no_anchors: Without Semantic Anchors
+# - no_cwe: Without CWE Knowledge
+# - no_operators: Without Mutation Operators
+# - no_anchors_no_cwe: Without both Anchors & CWE
+# - minimal: No enhancements (baseline)
 ```
 
-To visualize the evaluation result, simply execute rq3_eval.py.
+**Batch Ablation Study:**
 
+For running multiple ablation configurations in parallel:
+
+```bash
+# Configure target model in run_ablastion.sh, then:
+bash run_ablastion.sh
+```
 ## RQs
 
 Experiment results of our paper.
