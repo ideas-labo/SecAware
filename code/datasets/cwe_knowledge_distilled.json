@@ -1,0 +1,1352 @@
+{
+  "1240": {
+    "cwe_id": "1240",
+    "cwe_title": "Use of a Cryptographic Primitive with a Risky Implementation",
+    "description": "To fulfill the need for a cryptographic primitive, the product implements a cryptographic algorithm using a non-standard, unproven, or disallowed/non-compliant cryptographic implementation.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability typically appears in scenarios where developers attempt to implement custom cryptographic solutions without adhering to established standards or using proven cryptographic libraries. It can affect any application that requires encryption, including web applications, mobile apps, and IoT devices.",
+    "design_challenges": "One of the main challenges is balancing the need for custom cryptographic solutions with the risk of introducing vulnerabilities. Developers may face pressure to meet specific performance requirements or to implement unique features that standard libraries do not support.",
+    "expanded_use_cases": "Custom encryption for proprietary protocols, performance optimization in resource-constrained environments, and implementation of novel cryptographic features not supported by standard libraries.",
+    "design_constraints": "Must comply with cryptographic standards and best practices. Performance optimizations should not compromise security. Proprietary solutions must undergo rigorous security testing.",
+    "engineering_tradeoffs": "Choosing between using a proven but possibly less performant cryptographic library and implementing a custom solution that may offer better performance but introduces security risks.",
+    "external_dependencies": "Reliance on cryptographic libraries and standards. Need for access to cryptographically secure random number generators.",
+    "industry_best_practices": "Use established cryptographic libraries and standards. Avoid implementing custom cryptographic algorithms unless absolutely necessary. Regularly update cryptographic libraries to patch known vulnerabilities. Conduct thorough security testing of any custom cryptographic implementation.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "text",
+        "code": "Suppose an Encryption algorithm needs a random value for a key. Instead of using a DRNG (Deterministic Random Number Generator), the designer uses a linear-feedback shift register (LFSR) to generate the value."
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "While an LFSR may provide pseudo-random number generation service, the entropy (measure of randomness) of the resulting output may be less than that of an accepted DRNG (like that used in dev/urandom). Thus, using an LFSR weakens the strength of the cryptographic system, because it may be possible for an attacker to guess the LFSR output and subsequently the encryption key."
+      },
+      "safe_code": {
+        "language": "text",
+        "code": "If a cryptographic algorithm expects a random number as its input, provide one. Do not provide a pseudo-random value."
+      }
+    }
+  },
+  "589": {
+    "cwe_id": "589",
+    "cwe_title": "Call to Non-ubiquitous API",
+    "description": "The product uses an API function that does not exist on all versions of the target platform. This could cause portability problems or inconsistencies that allow denial of service or other consequences.",
+    "extended_description": "Some functions that offer security features supported by the OS are not available on all versions of the OS in common use. Likewise, functions are often deprecated or made obsolete for security reasons and should not be used.",
+    "usage_scenarios": "This vulnerability typically appears in applications designed to run across multiple versions of an operating system or platform, where the developer assumes the presence of certain API functions without verifying their availability across all target versions.",
+    "design_challenges": "Ensuring application functionality and security across different platform versions without relying on non-ubiquitous or deprecated APIs.",
+    "expanded_use_cases": "Cross-platform applications, mobile apps targeting multiple OS versions, and software requiring backward compatibility.",
+    "design_constraints": "Developers must design applications to either avoid using non-ubiquitous APIs or to include fallback mechanisms when these APIs are unavailable.",
+    "engineering_tradeoffs": "Using the latest APIs may improve security and functionality but at the cost of reduced compatibility with older system versions. Conversely, avoiding these APIs may ensure broader compatibility but potentially at the expense of security and performance.",
+    "external_dependencies": "The availability and stability of APIs across different versions of the operating system or platform.",
+    "industry_best_practices": "Developers should verify API availability across all target platform versions, use feature detection mechanisms, and implement fallback solutions for missing APIs. Additionally, staying informed about deprecated APIs and avoiding their use is crucial.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "void unsafeFunction() {\n    // This function uses a non-ubiquitous API\n    nonUbiquitousAPIFunction();\n}"
+      },
+      "attack_example": {
+        "language": "N/A",
+        "code": "An attacker could exploit this vulnerability by running the application on a platform version where the API is not available, causing the application to crash or behave unexpectedly."
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "void safeFunction() {\n    // Check for API availability before use\n    if (isAPIAvailable()) {\n        nonUbiquitousAPIFunction();\n    } else {\n        // Implement fallback functionality\n        fallbackFunction();\n    }\n}"
+      }
+    }
+  },
+  "502": {
+    "cwe_id": "502",
+    "cwe_title": "Deserialization of Untrusted Data",
+    "description": "The product deserializes untrusted data without sufficiently ensuring that the resulting data will be valid.",
+    "extended_description": "",
+    "usage_scenarios": "Deserialization is commonly used in applications for data persistence, remote communication, and configuration. However, when the deserialized data comes from an untrusted source, it can lead to serious vulnerabilities.",
+    "design_challenges": "Ensuring the integrity and authenticity of serialized data before deserialization is challenging, especially in distributed systems where data may traverse untrusted networks.",
+    "expanded_use_cases": "Applications that rely on serialization for storing user preferences, session data, or for inter-process communication are particularly vulnerable if they deserialize data from untrusted sources.",
+    "design_constraints": "Developers must implement mechanisms to verify the source and integrity of serialized data before deserialization, which may require additional computational resources and complexity.",
+    "engineering_tradeoffs": "Implementing strict deserialization checks can impact performance and development time but is necessary for security. Alternatively, using safer serialization formats or libraries can reduce risk but may limit functionality or interoperability.",
+    "external_dependencies": "Reliance on serialization libraries (e.g., Java's ObjectInputStream, Python's Pickle) that do not inherently verify the integrity or source of the data being deserialized.",
+    "industry_best_practices": "Use serialization formats that support integrity checks (e.g., JSON Web Tokens with signatures). Avoid deserializing data from untrusted sources. Implement explicit checks in custom deserialization logic. Consider using alternatives to serialization for data transfer.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "try {File file = new File(\"object.obj\");ObjectInputStream in = new ObjectInputStream(new FileInputStream(file));javax.swing.JButton button = (javax.swing.JButton) in.readObject();in.close();}"
+      },
+      "attack_example": {
+        "language": "Python",
+        "code": "try {\n                        class ExampleProtocol(protocol.Protocol):def dataReceived(self, data):\n                           # Code that would be here would parse the incoming data# After receiving headers, call confirmAuth() to authenticate\n                           def confirmAuth(self, headers):try:token = cPickle.loads(base64.b64decode(headers['AuthToken']))if not check_hmac(token['signature'], token['data'], getSecretKey()):raise AuthFailself.secure_data = token['data']except:raise AuthFail\n                     }"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "private final void readObject(ObjectInputStream in) throws java.io.IOException {throw new java.io.IOException(\"Cannot be deserialized\"); }"
+      }
+    }
+  },
+  "319": {
+    "cwe_id": "319",
+    "cwe_title": "Cleartext Transmission of Sensitive Information",
+    "description": "The product transmits sensitive or security-critical data in cleartext in a communication channel that can be sniffed by unauthorized actors.",
+    "extended_description": "This vulnerability allows unauthorized actors to intercept and read sensitive data transmitted over unencrypted channels, leading to potential data breaches and security compromises.",
+    "usage_scenarios": "Transmitting sensitive information such as passwords, personal data, or security tokens over unencrypted HTTP, SMB, or other protocols.",
+    "design_challenges": "Ensuring all data transmissions are encrypted without significantly impacting performance or user experience.",
+    "expanded_use_cases": "Operational Technology (OT) products, cloud storage configurations, and web applications transmitting sensitive data.",
+    "design_constraints": "Must support encryption protocols and ensure backward compatibility where necessary.",
+    "engineering_tradeoffs": "Balancing security with performance, especially in environments with limited computational resources.",
+    "external_dependencies": "Dependence on encryption libraries and protocols (e.g., TLS, HTTPS) and their correct implementation.",
+    "industry_best_practices": "Always use encrypted channels (HTTPS, SMB 3.1.1) for transmitting sensitive information; disable support for unencrypted protocols.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "try {URL u = new URL(\"http://www.secret.example.org/\");HttpURLConnection hu = (HttpURLConnection) u.openConnection();hu.setRequestMethod(\"PUT\");hu.connect();OutputStream os = hu.getOutputStream();hu.disconnect();}catch (IOException e) {\n                           //...\n                           \n                     }"
+      },
+      "attack_example": {
+        "language": "JSON",
+        "code": "{\n\t\t   \n\t\t     \"name\": \"{StorageAccountName}\",\n\t\t     \"enableHttpsTrafficOnly\": false,\n\t\t     \"type\": \"Microsoft.Storage/storageAccounts\"\n\t\t   \n\t\t   }"
+      },
+      "safe_code": {
+        "language": "Shell",
+        "code": "az storage account update -g {ResourceGroupName} -n {StorageAccountName} --https-only true"
+      }
+    }
+  },
+  "276": {
+    "cwe_id": "276",
+    "cwe_title": "Incorrect Default Permissions",
+    "description": "During installation, installed file permissions are set to allow anyone to modify those files.",
+    "extended_description": "This vulnerability occurs when software installation processes do not properly set file permissions, potentially allowing unauthorized users to modify or delete critical files. This can lead to a range of security issues, including privilege escalation, data tampering, and denial of service.",
+    "usage_scenarios": "This issue commonly arises in multi-user environments where software is installed system-wide. Applications that do not explicitly set secure default permissions during installation are particularly vulnerable.",
+    "design_challenges": "Ensuring that file permissions are correctly set during installation without overly restricting legitimate access can be challenging. Developers must balance security with usability.",
+    "expanded_use_cases": "Incorrect default permissions can affect any software that installs files on a system, from operating system components to third-party applications.",
+    "design_constraints": "Developers must consider the security implications of file permissions during the design phase, ensuring that installation scripts or processes correctly set permissions.",
+    "engineering_tradeoffs": "There is a trade-off between security and convenience. More restrictive permissions enhance security but may complicate legitimate use or administration. Less restrictive permissions improve usability but increase security risks.",
+    "external_dependencies": "This vulnerability is dependent on the operating system's permission model. Unix-like systems (e.g., Linux, macOS) and Windows handle permissions differently, requiring platform-specific considerations.",
+    "industry_best_practices": "Best practices include setting the most restrictive permissions that still allow the application to function correctly, using installation scripts that explicitly set permissions, and conducting post-installation audits to verify permissions.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "bash",
+        "code": "chmod 777 /path/to/installed/file"
+      },
+      "attack_example": {
+        "language": "bash",
+        "code": "echo 'malicious content' > /path/to/installed/file"
+      },
+      "safe_code": {
+        "language": "bash",
+        "code": "chmod 750 /path/to/installed/file"
+      }
+    }
+  },
+  "121": {
+    "cwe_id": "121",
+    "cwe_title": "Stack-based Buffer Overflow",
+    "description": "A stack-based buffer overflow condition is a condition where the buffer being overwritten is allocated on the stack (i.e., is a local variable or, rarely, a parameter to a function).",
+    "extended_description": "",
+    "usage_scenarios": "Stack-based buffer overflows typically occur in scenarios where a program reads more data into a buffer than it can hold, especially when the data size is not properly checked before copying. This can happen in various functions like strcpy, gets, and others that do not perform bounds checking.",
+    "design_challenges": "Designing software that is both efficient and secure presents challenges, especially when handling user input or data of unknown size. Ensuring that buffers are of adequate size and that input is properly validated requires careful consideration during the design phase.",
+    "expanded_use_cases": "This vulnerability can be exploited in any application that processes untrusted input without proper bounds checking, including network services, web applications, and desktop applications.",
+    "design_constraints": "Developers must consider the maximum expected size of input data and ensure that buffers are sized appropriately. Additionally, functions that do not perform bounds checking should be avoided or used with extreme caution.",
+    "engineering_tradeoffs": "Using safer functions that perform bounds checking may introduce a slight performance overhead but significantly reduce the risk of buffer overflow vulnerabilities. The trade-off between performance and security must be carefully managed.",
+    "external_dependencies": "The use of external libraries for string manipulation and other operations can introduce vulnerabilities if those libraries contain unsafe functions. Developers should prefer libraries that offer secure alternatives to known unsafe functions.",
+    "industry_best_practices": "Best practices include using safe string handling functions (e.g., strncpy instead of strcpy), validating all input data, employing static and dynamic analysis tools to detect potential buffer overflows, and adopting secure coding standards.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "#define BUFSIZE 256\nint main(int argc, char **argv) {\n    char buf[BUFSIZE];\n    strcpy(buf, argv[1]);\n}"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "void host_lookup(char *user_supplied_addr){\n    struct hostent *hp;\n    in_addr_t *addr;\n    char hostname[64];\n    in_addr_t inet_addr(const char *cp);\n    validate_addr_form(user_supplied_addr);\n    addr = inet_addr(user_supplied_addr);\n    hp = gethostbyaddr( addr, sizeof(struct in_addr), AF_INET);\n    strcpy(hostname, hp->h_name);\n}"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "#define BUFSIZE 256\nint main(int argc, char **argv) {\n    char buf[BUFSIZE];\n    if (argv[1] != NULL && strlen(argv[1]) < BUFSIZE) {\n        strncpy(buf, argv[1], BUFSIZE - 1);\n        buf[BUFSIZE - 1] = '\\0';\n    }\n}"
+      }
+    }
+  },
+  "807": {
+    "cwe_id": "807",
+    "cwe_title": "Reliance on Untrusted Inputs in a Security Decision",
+    "description": "The product uses a protection mechanism that relies on the existence or values of an input, but the input can be modified by an untrusted actor in a way that bypasses the protection mechanism.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in web applications where security decisions, such as authentication or authorization, are based on client-side inputs like cookies or headers that can be manipulated by an attacker.",
+    "design_challenges": "Designing systems that make security decisions based on inputs requires ensuring that those inputs cannot be tampered with by untrusted sources. This often involves complex validation and verification mechanisms.",
+    "expanded_use_cases": "Use cases include web applications, API gateways, and any system where security decisions are influenced by external inputs.",
+    "design_constraints": "Systems must not solely rely on client-side inputs for security decisions. Additional server-side validation and state management are required.",
+    "engineering_tradeoffs": "Increased security measures may lead to higher complexity and potential performance overhead due to additional validation checks.",
+    "external_dependencies": "Dependencies on external systems for input validation (e.g., DNS for host verification) can introduce vulnerabilities if those systems are compromised.",
+    "industry_best_practices": "Implement server-side session management, use secure cookies with HttpOnly and Secure flags, validate and sanitize all inputs, and employ multi-factor authentication where possible.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "Cookie[] cookies = request.getCookies();for (int i =0; i< cookies.length; i++) {Cookie c = cookies[i];if (c.getName().equals(\"role\")) {userRole = c.getValue();}}"
+      },
+      "attack_example": {
+        "language": "PHP",
+        "code": "$auth = $_COOKIES['authenticated'];if (! $auth) {if (AuthenticateUser($_POST['user'], $_POST['password']) == \"success\") {// save the cookie to send out in future responsessetcookie(\"authenticated\", \"1\", time()+60*60*2);}else {ShowLoginScreen();die(\"\\n\");}}DisplayMedicalHistory($_POST['patient_ID']);"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "// Safe code example would involve server-side session management and not relying on client-side cookies for authentication or authorization decisions."
+      }
+    }
+  },
+  "611": {
+    "cwe_id": "611",
+    "cwe_title": "Improper Restriction of XML External Entity Reference",
+    "description": "The product processes an XML document that can contain XML entities with URIs that resolve to documents outside of the intended sphere of control, causing the product to embed incorrect documents into its output.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability typically appears in applications that process XML input from untrusted sources without properly restricting XML external entity references. It can lead to unauthorized access to files on the server, denial of service, or server-side request forgery.",
+    "design_challenges": "Designing XML processors that are both flexible and secure presents a challenge. Developers must balance the need to process complex XML documents with the need to protect against malicious entities.",
+    "expanded_use_cases": "Applications that parse XML documents from external sources, such as web services or file uploads, are particularly vulnerable if they do not properly validate or restrict XML external entities.",
+    "design_constraints": "Secure XML processing requires disabling external entity references or validating them against a whitelist of allowed entities.",
+    "engineering_tradeoffs": "Disabling external entity references can limit the functionality of XML processing but is necessary for security. Alternatively, validating entities can add complexity and processing overhead.",
+    "external_dependencies": "Applications may depend on XML processing libraries that do not restrict external entity references by default, requiring explicit configuration to secure.",
+    "industry_best_practices": "Best practices include disabling external entity processing in XML parsers, using less complex data formats like JSON when possible, and validating all XML input against a strict schema.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();\nDocumentBuilder builder = factory.newDocumentBuilder();\nDocument document = builder.parse(new File(\"input.xml\"));"
+      },
+      "attack_example": {
+        "language": "XML",
+        "code": "<!DOCTYPE foo [ <!ENTITY xxe SYSTEM \"file:///etc/passwd\"> ]>\n<foo>&xxe;</foo>"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();\nfactory.setFeature(\"http://apache.org/xml/features/disallow-doctype-decl\", true);\nDocumentBuilder builder = factory.newDocumentBuilder();\nDocument document = builder.parse(new File(\"input.xml\"));"
+      }
+    }
+  },
+  "119": {
+    "cwe_id": "119",
+    "cwe_title": "Improper Restriction of Operations within the Bounds of a Memory Buffer",
+    "description": "The product performs operations on a memory buffer, but it reads from or writes to a memory location outside the buffer's intended boundary. This may result in read or write operations on unexpected memory locations that could be linked to other variables, data structures, or internal program data.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in scenarios where software processes input data without proper bounds checking, such as in network services processing user-supplied data, or in applications manipulating strings or arrays without verifying the size of the input.",
+    "design_challenges": "Ensuring that all operations on memory buffers are within their intended bounds without significantly impacting performance or usability is a key challenge. Developers must balance security with efficiency, especially in performance-critical applications.",
+    "expanded_use_cases": "Use cases include any software that processes external input, such as web servers, database systems, and any application that performs string manipulation or array indexing.",
+    "design_constraints": "Developers must implement bounds checking for all operations that could potentially exceed buffer boundaries, which may require additional computational resources and could impact application performance.",
+    "engineering_tradeoffs": "The trade-off involves the additional computational overhead of bounds checking versus the risk of buffer overflow vulnerabilities. In some cases, the overhead may be deemed acceptable for the security benefits it provides.",
+    "external_dependencies": "Dependencies may include libraries or functions that handle memory operations, such as string manipulation functions in the C standard library, which may not perform bounds checking by default.",
+    "industry_best_practices": "Best practices include using safe string and buffer manipulation functions that perform bounds checking, employing static and dynamic analysis tools to detect potential buffer overflows, and adopting programming languages or frameworks that inherently manage memory safety.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "void host_lookup(char *user_supplied_addr){\n                        struct hostent *hp;in_addr_t *addr;char hostname[64];in_addr_t inet_addr(const char *cp);\n                           \n                           /*routine that ensures user_supplied_addr is in the right format for conversion */\n                           \n                           validate_addr_form(user_supplied_addr);addr = inet_addr(user_supplied_addr);hp = gethostbyaddr( addr, sizeof(struct in_addr), AF_INET);strcpy(hostname, hp->h_name);\n                     }"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "int main (int argc, char **argv) {char *items[] = {\"boat\", \"car\", \"truck\", \"train\"};int index = GetUntrustedOffset();printf(\"You selected %s\\n\", items[index-1]);}"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "...\n                     \n                     // check that the array index is within the correct\n                     \n                     \n                     // range of values for the array\n                     if (index >= 0 && index < len) {\n                     ..."
+      }
+    }
+  },
+  "680": {
+    "cwe_id": "680",
+    "cwe_title": "Integer Overflow to Buffer Overflow",
+    "description": "The product performs a calculation to determine how much memory to allocate, but an integer overflow can occur that causes less memory to be allocated than expected, leading to a buffer overflow.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in scenarios where the application dynamically allocates memory based on user input or data from an external source, such as processing images, files, or network packets where the size is not properly validated before allocation.",
+    "design_challenges": "Ensuring that all calculations for memory allocation are checked for potential integer overflows before the allocation occurs, especially in cases where the size is derived from untrusted sources.",
+    "expanded_use_cases": "Applications that handle large data sets or perform operations based on dynamic input sizes are particularly vulnerable if they do not implement proper bounds checking.",
+    "design_constraints": "Developers must consider the maximum possible size of inputs and ensure that the system can handle these sizes without causing an integer overflow during memory allocation calculations.",
+    "engineering_tradeoffs": "Implementing comprehensive input validation and bounds checking may introduce performance overhead but is necessary to prevent vulnerabilities.",
+    "external_dependencies": "Reliance on external data or libraries that do not perform proper bounds checking can introduce vulnerabilities into the application.",
+    "industry_best_practices": "Use of safe integer operations for size calculations, employing programming languages or libraries that automatically check for integer overflows, and thorough testing with edge cases to ensure robustness against such vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "img_t table_ptr; /*struct containing img data, 10kB each*/int num_imgs;...num_imgs = get_num_imgs();table_ptr = (img_t*)malloc(sizeof(img_t)*num_imgs);..."
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "An attacker could provide a large value for num_imgs that, when multiplied by the size of img_t, causes an integer overflow, resulting in a smaller buffer than expected. Subsequent operations could then write beyond the allocated buffer, leading to a buffer overflow."
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "img_t table_ptr; /*struct containing img data, 10kB each*/int num_imgs;...num_imgs = get_num_imgs();if (num_imgs > 0 && num_imgs < MAX_IMGS) { table_ptr = (img_t*)malloc(sizeof(img_t)*num_imgs); } else { /* handle error */ }..."
+      }
+    }
+  },
+  "78": {
+    "cwe_id": "78",
+    "cwe_title": "Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')",
+    "description": "The product constructs all or part of an OS command using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended OS command when it is sent to a downstream component.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in web applications and systems that execute OS commands based on user input without proper validation or sanitization. Examples include executing system commands for file operations, database backups, or system utilities.",
+    "design_challenges": "Ensuring user input is safely incorporated into OS commands without allowing command injection requires careful design. Challenges include validating and sanitizing input, managing command execution contexts, and minimizing the use of external commands.",
+    "expanded_use_cases": "Use cases range from simple command execution for system administration tasks to complex scenarios involving dynamic command generation based on user input in web applications.",
+    "design_constraints": "Systems must be designed to limit the use of OS commands, especially those constructed from user input. When unavoidable, strict input validation and command sanitization must be enforced.",
+    "engineering_tradeoffs": "The trade-off often involves functionality versus security. Allowing dynamic command generation increases flexibility but introduces potential vulnerabilities. Strict input validation can reduce functionality or user convenience.",
+    "external_dependencies": "Dependencies include the operating system's command interpreter and any external programs or scripts executed by the application. These dependencies can introduce vulnerabilities if not properly managed.",
+    "industry_best_practices": "Best practices include using parameterized APIs or libraries that avoid the need for OS command invocation, employing strict input validation, and applying the principle of least privilege when executing commands.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "$userName = $_POST[\"user\"];$command = 'ls -l /home/' . $userName;system($command);"
+      },
+      "attack_example": {
+        "language": null,
+        "code": ";rm -rf /"
+      },
+      "safe_code": {
+        "language": "PHP",
+        "code": "$userName = escapeshellarg($_POST[\"user\"]);$command = 'ls -l /home/' . $userName;system($command);"
+      }
+    }
+  },
+  "79": {
+    "cwe_id": "79",
+    "cwe_title": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+    "description": "The product does not neutralize or incorrectly neutralizes user-controllable input before it is placed in output that is used as a web page that is served to other users.",
+    "extended_description": "Cross-site Scripting (XSS) vulnerabilities occur when an application includes untrusted data in a new web page without proper validation or escaping, or updates an existing web page with user-supplied data using a browser API that can create HTML or JavaScript. XSS allows attackers to execute scripts in the victim's browser which can hijack user sessions, deface web sites, or redirect the user to malicious sites.",
+    "usage_scenarios": "Web applications that dynamically generate web pages from user input without proper sanitization are susceptible to XSS attacks. Common scenarios include search fields, comment sections, and user profile pages where user input is displayed back to the user or other users.",
+    "design_challenges": "Designing web applications that are both user-friendly and secure requires careful consideration of how user input is handled. Ensuring that all user input is properly sanitized before being displayed or stored is a significant challenge, especially in complex applications with numerous input points.",
+    "expanded_use_cases": "XSS vulnerabilities can be exploited in various ways, including stealing cookies, session tokens, or other sensitive information that can be used to impersonate the victim. Attackers can also use XSS to deliver malware, deface websites, or conduct phishing attacks.",
+    "design_constraints": "Applications must be designed to validate and sanitize all user input, both on the client and server sides. This includes implementing Content Security Policy (CSP) headers, using secure coding practices, and regularly updating and patching web application frameworks and libraries.",
+    "engineering_tradeoffs": "Implementing comprehensive input validation and output encoding can impact application performance and development time. However, the tradeoff is necessary to protect users and maintain trust in the application.",
+    "external_dependencies": "Web applications often rely on third-party libraries and frameworks for functionality. These dependencies can introduce XSS vulnerabilities if they are not properly maintained or if they contain insecure code. Regular updates and security audits of these dependencies are essential.",
+    "industry_best_practices": "To mitigate XSS vulnerabilities, developers should: use frameworks that automatically escape XSS by design, such as React or Angular; implement Content Security Policy (CSP); validate and sanitize all user input; use HTTPOnly and Secure flags for cookies; and conduct regular security testing and code reviews.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "$username = $_GET['username'];echo '<div class=\"header\"> Welcome, ' . $username . '</div>';"
+      },
+      "attack_example": {
+        "language": null,
+        "code": "http://trustedSite.example.com/welcome.php?username=<Script Language=\"Javascript\">alert(\"You've been attacked!\");</Script>"
+      },
+      "safe_code": {
+        "language": "PHP",
+        "code": "$username = htmlspecialchars($_GET['username'], ENT_QUOTES, 'UTF-8');echo '<div class=\"header\"> Welcome, ' . $username . '</div>';"
+      }
+    }
+  },
+  "89": {
+    "cwe_id": "89",
+    "cwe_title": "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+    "description": "The product constructs all or part of an SQL command using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended SQL command when it is sent to a downstream component.",
+    "extended_description": "Without sufficient removal or quoting of SQL syntax in user-controllable inputs, the generated SQL query can cause those inputs to be interpreted as SQL instead of ordinary user data. This can lead to unauthorized access to data, data corruption, or denial of service.",
+    "usage_scenarios": "SQL injection vulnerabilities occur when an application includes untrusted data in an SQL query without proper sanitization. This can happen in any application that uses a database and constructs SQL queries dynamically with user input.",
+    "design_challenges": "Balancing the need for dynamic SQL queries with the security requirement to sanitize inputs can be challenging. Developers must ensure that all user inputs are treated as potential threats and sanitized accordingly.",
+    "expanded_use_cases": "SQL injection can affect any application that interacts with a database, including web applications, mobile apps, and desktop applications. It is particularly prevalent in web applications where user input is often used to construct SQL queries.",
+    "design_constraints": "Applications must be designed to sanitize all user inputs that are used in SQL queries. This includes inputs from forms, cookies, and HTTP headers.",
+    "engineering_tradeoffs": "Using parameterized queries or prepared statements can prevent SQL injection but may require changes to the application's database access code. Input validation can also help but may not catch all potential injection vectors.",
+    "external_dependencies": "Applications depend on the database management system's ability to correctly interpret parameterized queries or prepared statements. Some older or less common database systems may not fully support these features.",
+    "industry_best_practices": "Use parameterized queries or prepared statements to separate SQL code from data. Validate and sanitize all user inputs. Limit database permissions for application accounts to reduce the impact of a successful injection attack.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C#",
+        "code": "string userName = ctx.getAuthenticatedUserName();string query = \"SELECT * FROM items WHERE owner = '\" + userName + \"' AND itemname = '\" + ItemName.Text + \"'\";sda = new SqlDataAdapter(query, conn);DataTable dt = new DataTable();sda.Fill(dt);"
+      },
+      "attack_example": {
+        "language": "SQL",
+        "code": "SELECT * FROM items WHERE owner = 'wiley' AND itemname = 'name' OR 'a'='a';"
+      },
+      "safe_code": {
+        "language": "PHP",
+        "code": "$id = intval($_COOKIE[\"mid\"]);mysql_query(\"SELECT MessageID, Subject FROM messages WHERE MessageID = '$id'\");"
+      }
+    }
+  },
+  "416": {
+    "cwe_id": "416",
+    "cwe_title": "Use After Free",
+    "description": "The product reuses or references memory after it has been freed. At some point afterward, the memory may be allocated again and saved in another pointer, while the original pointer references a location somewhere within the new allocation. Any operations using the original pointer are no longer valid because the memory \"belongs\" to the code that operates on the new pointer.",
+    "extended_description": "",
+    "usage_scenarios": "Use after free vulnerabilities typically occur in applications that manage memory manually, such as those written in C or C++. These vulnerabilities can be exploited to execute arbitrary code, cause a denial of service, or leak sensitive information.",
+    "design_challenges": "Managing memory manually is error-prone and requires careful tracking of all pointers to allocated memory to ensure that freed memory is not accessed.",
+    "expanded_use_cases": "Applications that perform dynamic memory allocation and deallocation are susceptible to use after free errors. This includes operating systems, web browsers, and any software that handles complex data structures dynamically.",
+    "design_constraints": "Developers must ensure that all pointers to freed memory are nullified or otherwise made invalid immediately after the memory is freed to prevent accidental reuse.",
+    "engineering_tradeoffs": "Using automatic memory management (e.g., garbage collection) can mitigate use after free vulnerabilities but may introduce performance overhead and unpredictability in memory usage.",
+    "external_dependencies": "The risk of use after free vulnerabilities can be reduced by using programming languages or libraries that manage memory automatically, though this may not always be feasible for performance-critical applications.",
+    "industry_best_practices": "Best practices include using tools like static analyzers and fuzzers to detect potential use after free errors, adopting secure coding standards, and employing defensive programming techniques such as nullifying pointers after freeing memory.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "#include <stdio.h>\n#include <unistd.h>\n#define BUFSIZER1 512\n#define BUFSIZER2 ((BUFSIZER1/2) - 8)\nint main(int argc, char **argv) {\nchar *buf1R1;\nchar *buf2R1;\nchar *buf2R2;\nchar *buf3R2;\nbuf1R1 = (char *) malloc(BUFSIZER1);\nbuf2R1 = (char *) malloc(BUFSIZER1);\nfree(buf2R1);\nbuf2R2 = (char *) malloc(BUFSIZER2);\nbuf3R2 = (char *) malloc(BUFSIZER2);\nstrncpy(buf2R1, argv[1], BUFSIZER1-1);\nfree(buf1R1);\nfree(buf2R2);\nfree(buf3R2);\n}"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "char* ptr = (char*)malloc (SIZE);\nif (err) {\nabrt = 1;\nfree(ptr);\n}\n...\nif (abrt) {\nlogError(\"operation aborted before commit\", ptr);\n}"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "char* ptr = (char*)malloc (SIZE);\nif (err) {\nabrt = 1;\nfree(ptr);\nptr = NULL;\n}\n...\nif (abrt) {\nlogError(\"operation aborted before commit\", ptr);\n}"
+      }
+    }
+  },
+  "908": {
+    "cwe_id": "908",
+    "cwe_title": "Use of Uninitialized Resource",
+    "description": "The product uses or accesses a resource that has not been initialized.",
+    "extended_description": "When a resource has not been properly initialized, the product may behave unexpectedly. This may lead to a crash or invalid memory access, but the consequences vary depending on the type of resource and how it is used within the product.",
+    "usage_scenarios": "This vulnerability can appear in various programming contexts where resources like variables, memory, or system handles are used before being properly initialized. It's common in languages that do not enforce initialization, such as C and C++, but can also occur in higher-level languages under certain conditions.",
+    "design_challenges": "Ensuring all resources are properly initialized before use can be challenging, especially in complex systems where initialization might depend on runtime conditions or external inputs. Memory management and resource lifecycle tracking are critical aspects that need careful design.",
+    "expanded_use_cases": "Use cases include any software development scenario where resources are dynamically allocated or where initialization is conditional. This spans from low-level system programming to high-level application development.",
+    "design_constraints": "Developers must design systems with clear initialization paths for all resources. This might involve static analysis tools to detect uninitialized variables, runtime checks, or adopting programming paradigms that minimize manual resource management.",
+    "engineering_tradeoffs": "The trade-off often involves performance versus safety. Initializing resources conservatively can prevent vulnerabilities but may impact performance. Conversely, lazy initialization can improve performance but increases the risk of using uninitialized resources.",
+    "external_dependencies": "Dependencies on external libraries or systems for resource initialization can introduce vulnerabilities if those dependencies fail to initialize resources properly or if their behavior changes unexpectedly.",
+    "industry_best_practices": "Best practices include using static analysis tools to detect uninitialized variables, adopting languages or frameworks that enforce initialization, implementing comprehensive testing to cover all initialization paths, and educating developers on the importance of proper resource initialization.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "char str[20];\nstrcat(str, \"hello world\");\nprintf(\"%s\", str);"
+      },
+      "attack_example": {
+        "language": "Perl",
+        "code": "$username = GetCurrentUser();\n$state = GetStateData($username);\nif (defined($state)) {$uid = ExtractUserID($state);}\nif ($uid == 0) {DoAdminThings();}"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "char *test_string = \"Done at the beginning\";\nif (i != err_val)\n{\ntest_string = \"Hello World!\";\n}\nprintf(\"%s\", test_string);"
+      }
+    }
+  },
+  "94": {
+    "cwe_id": "94",
+    "cwe_title": "Improper Control of Generation of Code ('Code Injection')",
+    "description": "The product constructs all or part of a code segment using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the syntax or behavior of the intended code segment.",
+    "extended_description": "",
+    "usage_scenarios": "Code injection vulnerabilities typically occur in scenarios where user input is dynamically included in code execution contexts without proper sanitization or validation. Common scenarios include web applications that dynamically generate code based on user input, configuration scripts that execute user-supplied commands, and applications that use eval() or similar functions to process user input.",
+    "design_challenges": "Designing systems that safely incorporate user input into code execution contexts without introducing vulnerabilities requires careful consideration of input validation, sanitization, and the use of safer alternatives to dynamic code execution.",
+    "expanded_use_cases": "Beyond web applications, code injection can affect any system that dynamically executes code based on user input, including desktop applications, server-side scripts, and embedded systems with user-configurable scripts.",
+    "design_constraints": "Systems must be designed to minimize or eliminate the use of dynamic code execution based on user input. When dynamic execution is unavoidable, strict input validation and sanitization must be enforced.",
+    "engineering_tradeoffs": "The trade-off often involves choosing between the flexibility and power of dynamic code execution and the security risks it introduces. Safer alternatives may require more development effort or limit functionality.",
+    "external_dependencies": "Mitigating code injection may depend on external libraries or frameworks that provide safe alternatives to dynamic code execution, such as template engines that automatically escape user input.",
+    "industry_best_practices": "Best practices include avoiding the use of eval() and similar functions with untrusted input, employing strict input validation and sanitization, using prepared statements or parameterized queries for database access, and leveraging security-focused development frameworks.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "$MessageFile = \"messages.out\";if ($_GET[\"action\"] == \"NewMessage\") {$name = $_GET[\"name\"];$message = $_GET[\"message\"];$handle = fopen($MessageFile, \"a+\");fwrite($handle, \"<b>$name</b> says '$message'<hr>\\n\");fclose($handle);echo \"Message Saved!<p>\\n\";}else if ($_GET[\"action\"] == \"ViewMessages\") {include($MessageFile);}"
+      },
+      "attack_example": {
+        "language": null,
+        "code": "name=h4x0rmessage=%3C?php%20system(%22/bin/ls%20-l%22);?%3E"
+      },
+      "safe_code": {
+        "language": "Python",
+        "code": "def main():\n                  \n                    sum = 0\n                    numbers = input(\"Enter a space-separated list of numbers: \").split(\" \")\n                    try:\n                    \n                      for num in numbers:\n                      \n                        sum = sum + int(num)\n                      \n                      print(f\"Sum of {numbers} = {sum}\")\n                    \n                    except ValueError:\n                    \n                      print(\"Error: invalid input\")\n                    \n                  \n                  main()"
+      }
+    }
+  },
+  "676": {
+    "cwe_id": "676",
+    "cwe_title": "Use of Potentially Dangerous Function",
+    "description": "The product invokes a potentially dangerous function that could introduce a vulnerability if it is used incorrectly, but the function can also be used safely.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in scenarios where functions like strcpy(), gets(), or scanf() are used without proper bounds checking, leading to buffer overflows or other memory corruption issues.",
+    "design_challenges": "Designing software that is both efficient and secure requires careful consideration of function usage, especially those known to be potentially dangerous. Ensuring that all inputs are validated and that buffer sizes are checked can mitigate risks but may impact performance.",
+    "expanded_use_cases": "In real-world applications, such vulnerabilities can be exploited to execute arbitrary code, cause denial of service, or leak sensitive information. This is particularly critical in systems processing untrusted inputs, such as web servers or network services.",
+    "design_constraints": "Developers must balance the need for performance with the necessity of security. Using safer alternatives to dangerous functions, even if they are less efficient, can prevent vulnerabilities but may require more complex code or additional runtime checks.",
+    "engineering_tradeoffs": "The trade-off involves choosing between using faster, potentially unsafe functions and slower, safer alternatives. The decision impacts not only performance but also the security posture of the application.",
+    "external_dependencies": "Mitigating this vulnerability may require dependencies on safer libraries or functions provided by the programming language or third-party libraries, which may not always be available or may introduce compatibility issues.",
+    "industry_best_practices": "Best practices include using safer alternatives to dangerous functions (e.g., strncpy() instead of strcpy()), validating all inputs, employing static and dynamic analysis tools to detect unsafe function usage, and educating developers about secure coding practices.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "void manipulate_string(char * string){char buf[24];strcpy(buf, string);...}"
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "An attacker could supply a string longer than 24 characters to the manipulate_string function, causing a buffer overflow that may lead to arbitrary code execution."
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "void manipulate_string(char * string){char buf[24];strncpy(buf, string, sizeof(buf) - 1);buf[sizeof(buf) - 1] = '\\0';...}"
+      }
+    }
+  },
+  "770": {
+    "cwe_id": "770",
+    "cwe_title": "Allocation of Resources Without Limits or Throttling",
+    "description": "The product allocates a reusable resource or group of resources on behalf of an actor without imposing any restrictions on the size or number of resources that can be allocated, in violation of the intended security policy for that actor.",
+    "extended_description": "This vulnerability can lead to resource exhaustion, where an attacker can consume all available resources, leading to denial of service (DoS) or system crash. It commonly appears in scenarios involving network connections, file operations, memory allocation, and thread management where limits are not enforced.",
+    "usage_scenarios": "Network servers accepting connections, file upload services, memory-intensive applications, and multi-threaded applications.",
+    "design_challenges": "Balancing performance and resource availability against the need to limit resource usage to prevent exploitation.",
+    "expanded_use_cases": "High-traffic web servers, cloud storage services, and applications processing large data inputs.",
+    "design_constraints": "Implementing resource limits without significantly impacting legitimate use or performance.",
+    "engineering_tradeoffs": "Increased complexity in resource management vs. risk of resource exhaustion attacks.",
+    "external_dependencies": "Dependence on underlying system resources (CPU, memory, disk space, network bandwidth) and their management by the operating system or runtime environment.",
+    "industry_best_practices": "Implementing quotas, throttling, connection limits, and using resource pools (e.g., thread pools) to manage resource allocation. Monitoring resource usage to detect and mitigate potential exhaustion attacks.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "sock=socket(AF_INET, SOCK_STREAM, 0);while (1) {newsock=accept(sock, ...);printf(\"A connection has been accepted\\n\");pid = fork();}"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "bar connection() {foo = malloc(1024);return foo;}endConnection(bar foo) {free(foo);}int main() {while(1) {foo=connection();}endConnection(foo)}"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "public static final int SERVER_PORT = 4444;public static final int MAX_CONNECTIONS = 10;...\n                     public void acceptConnections() {\n                     \n                        try {ServerSocket serverSocket = new ServerSocket(SERVER_PORT);int counter = 0;boolean hasConnections = true;while (hasConnections) {hasConnections = checkForMoreConnections();Socket client = serverSocket.accept();Thread t = new Thread(new ClientSocketThread(client));t.setName(client.getInetAddress().getHostName() + \":\" + counter++);ExecutorService pool = Executors.newFixedThreadPool(MAX_CONNECTIONS);pool.execute(t);}serverSocket.close();\n                           \n                           } catch (IOException ex) {...}\n                     }"
+      }
+    }
+  },
+  "185": {
+    "cwe_id": "185",
+    "cwe_title": "Incorrect Regular Expression",
+    "description": "The product specifies a regular expression in a way that causes data to be improperly matched or compared.",
+    "extended_description": "When the regular expression is used in protection mechanisms such as filtering or validation, this may allow an attacker to bypass the intended restrictions on the incoming data.",
+    "usage_scenarios": "Regular expressions are widely used in input validation, data filtering, and pattern matching scenarios across various programming languages and applications.",
+    "design_challenges": "Designing a regular expression that accurately matches the intended pattern without being too permissive or too restrictive is challenging. It requires a deep understanding of both the regular expression syntax and the domain being modeled.",
+    "expanded_use_cases": "Use cases include validating user inputs such as email addresses, phone numbers, and IP addresses; filtering malicious inputs in web applications; and parsing complex data formats.",
+    "design_constraints": "Regular expressions must be carefully designed to avoid common pitfalls such as catastrophic backtracking, insufficient anchoring, and overly permissive patterns that can lead to security vulnerabilities.",
+    "engineering_tradeoffs": "There is a trade-off between the complexity and accuracy of a regular expression. More complex expressions may be more accurate but harder to understand and maintain. Simpler expressions may be easier to maintain but less accurate or secure.",
+    "external_dependencies": "The effectiveness of a regular expression depends on the regular expression engine used by the programming language or library, which may vary in features and behavior.",
+    "industry_best_practices": "Best practices include using anchors (^ and $) to ensure the entire input is matched, avoiding overly permissive patterns, testing regular expressions with a wide range of inputs, and considering alternative validation methods for complex patterns.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Perl",
+        "code": "$phone = GetPhoneNumber();if ($phone =~ /\\d+-\\d+/) {\n                        # looks like it only has hyphens and digits\n                        system(\"lookup-phone $phone\");}\n\t\t\t\t  else {error(\"malformed number!\");}"
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "\"; ls -l ; echo 123-456\""
+      },
+      "safe_code": {
+        "language": "Python",
+        "code": "import re\n\ndef validate_phone_number(phone_number):\n    # This regex pattern matches phone numbers in the format of XXX-XXX-XXXX\n    pattern = re.compile(r'^\\d{3}-\\d{3}-\\d{4}$')\n    if pattern.match(phone_number):\n        return True\n    else:\n        return False"
+      }
+    }
+  },
+  "327": {
+    "cwe_id": "327",
+    "cwe_title": "Use of a Broken or Risky Cryptographic Algorithm",
+    "description": "The product uses a broken or risky cryptographic algorithm or protocol.",
+    "extended_description": "",
+    "usage_scenarios": "Cryptographic algorithms are used in various scenarios such as data encryption, integrity verification, and secure communication. However, using broken or risky algorithms can compromise the security of these operations.",
+    "design_challenges": "Designing secure systems requires staying updated with the latest cryptographic standards and avoiding deprecated or weakened algorithms, which can be challenging due to legacy systems and cost constraints.",
+    "expanded_use_cases": "Use cases include securing sensitive data in applications, verifying the integrity of software updates, and ensuring secure communications between devices in critical infrastructure.",
+    "design_constraints": "Constraints include compatibility with existing systems, performance considerations, and the cost of implementing newer, more secure algorithms.",
+    "engineering_tradeoffs": "Trade-offs often involve choosing between the security of newer algorithms and the cost or performance implications of upgrading from older, now-risky algorithms.",
+    "external_dependencies": "Dependencies include the availability of cryptographic libraries that support secure algorithms and the need for hardware support for certain cryptographic operations.",
+    "industry_best_practices": "Best practices include using algorithms recommended by authoritative bodies like NIST, regularly updating cryptographic libraries, and conducting security audits to identify and replace risky algorithms.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "EVP_des_ecb();"
+      },
+      "attack_example": {
+        "language": "Other",
+        "code": "The manufacturer chooses a SHA1 hardware accelerator for to implement the scheme because it already has a working SHA1 Intellectual Property (IP) that the manufacturer had created and used earlier, so this reuse of IP saves design cost."
+      },
+      "safe_code": {
+        "language": "Other",
+        "code": "The manufacturer could have chosen a cryptographic solution that is recommended by the wide security community (including standard-setting bodies like NIST) and is not expected to be broken (or even better, weakened) within the reasonable life expectancy of the hardware product. In this case, the architects could have used SHA-2 or SHA-3, even if it meant that such choice would cost extra."
+      }
+    }
+  },
+  "208": {
+    "cwe_id": "208",
+    "cwe_title": "Observable Timing Discrepancy",
+    "description": "Two separate operations in a product require different amounts of time to complete, in a way that is observable to an actor and reveals security-relevant information about the state of the product, such as whether a particular operation was successful or not.",
+    "extended_description": "In security-relevant contexts, even small variations in timing can be exploited by attackers to indirectly infer certain details about the product's internal operations. For example, in some cryptographic algorithms, attackers can use timing differences to infer certain properties about a private key, making the key easier to guess. Timing discrepancies effectively form a timing side channel.",
+    "usage_scenarios": "This vulnerability commonly appears in authentication mechanisms, cryptographic operations, and any system where the timing of operations can leak information about the internal state or secrets.",
+    "design_challenges": "Designing systems that perform operations in constant time regardless of input, to prevent timing attacks, is challenging. It requires careful consideration of all operations that could leak timing information.",
+    "expanded_use_cases": "Beyond authentication and cryptography, timing discrepancies can affect any system where operations' timing can be observed and correlated with sensitive data or operations.",
+    "design_constraints": "Systems must ensure that all security-sensitive operations complete in constant time, or that any variations in timing do not correlate with sensitive data or the success/failure of operations.",
+    "engineering_tradeoffs": "Implementing constant-time operations may impact performance or require more complex code. However, the security benefits outweigh these costs in contexts where timing attacks are a concern.",
+    "external_dependencies": "Libraries or hardware that perform sensitive operations must also be designed to avoid timing discrepancies. Relying on external components without this property can introduce vulnerabilities.",
+    "industry_best_practices": "Use cryptographic libraries designed to resist timing attacks, implement constant-time comparison functions, and thoroughly test systems for timing vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Verilog",
+        "code": "always_comb @ (posedge clk)\n                    \n                    begin\n\t\t    \n                      assign check_pass[3:0] = 4'b0;\n                      for (i = 0; i < 4; i++) begin\n\t\t      \n                    \tif (entered_pass[(i*8 - 1) : i] eq golden_pass([i*8 - 1) : i])\n\t\t\t\n\t\t\t  assign check_pass[i] = 1;\n                    \t  continue;\n\t\t\t\n                    \telse\n\t\t\t\n                    \t  assign check_pass[i] = 0;\n                    \t  break;\n\t\t\t\n                    \tend\n\t\t      \n                      assign grant_access = (check_pass == 4'b1111) ? 1'b1: 1'b0;\n\t\t    \n                    end"
+      },
+      "attack_example": {
+        "language": "Python",
+        "code": "def validate_password(actual_pw, typed_pw):\n\t\t \n                   if len(actual_pw) <> len(typed_pw):\n\t\t   return 0\n                   for i in len(actual_pw):\n\t\t   if actual_pw[i] <> typed_pw[i]:\n\t\t   return 0\n                   \n                   return 1"
+      },
+      "safe_code": {
+        "language": "Verilog",
+        "code": "always_comb @ (posedge clk)\n\t\t  begin\n\t\t  \n                    assign check_pass[3:0] = 4'b0;\n               \t    for (i = 0; i < 4; i++) begin\n\t\t    \n               \t      if (entered_pass[(i*8 - 1) : i] eq golden_pass([i*8 -1) : i])\n\t\t      \n               \t\tassign check_pass[i] = 1;\n               \t\tcontinue;\n\t\t      \n               \t      else\n\t\t      \n               \t\tassign check_pass[i] = 0;\n               \t\tcontinue;\n\t\t      \n               \t      end\n\t\t    \n               \t    assign grant_access = (check_pass == 4'b1111) ? 1'b1: 1'b0;\n\t\t  \n\t\t  end"
+      }
+    }
+  },
+  "306": {
+    "cwe_id": "306",
+    "cwe_title": "Missing Authentication for Critical Function",
+    "description": "The product does not perform any authentication for functionality that requires a provable user identity or consumes a significant amount of resources.",
+    "extended_description": "",
+    "usage_scenarios": "Critical functions in applications such as creating bank accounts, accessing sensitive data in cloud storage, and controlling operational technology (OT) devices.",
+    "design_challenges": "Ensuring that all critical functions are protected by authentication without significantly impacting user experience or system performance.",
+    "expanded_use_cases": "Banking applications, cloud storage services, and operational technology products.",
+    "design_constraints": "Must balance security with usability and performance; authentication mechanisms should not introduce unnecessary complexity or delays.",
+    "engineering_tradeoffs": "Adding authentication may increase system complexity and require additional resources, but it is essential for securing critical functions.",
+    "external_dependencies": "Dependencies on authentication frameworks, cloud service provider security settings, and third-party libraries for secure authentication.",
+    "industry_best_practices": "Implement robust authentication mechanisms for all critical functions, use encryption for sensitive data, regularly audit and update security settings, and follow the principle of least privilege.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "public BankAccount createBankAccount(String accountNumber, String accountType,String accountName, String accountSSN, double balance) {\n                     \n                        BankAccount account = new BankAccount();account.setAccountNumber(accountNumber);account.setAccountType(accountType);account.setAccountOwnerName(accountName);account.setAccountOwnerSSN(accountSSN);account.setBalance(balance);\n                           return account;\n                     }"
+      },
+      "attack_example": {
+        "language": "Other",
+        "code": "A security researcher found 86 S3 buckets that could be accessed without authentication (CWE-306) and stored data unencrypted (CWE-312). These buckets exposed over 1000 GB of data and 1.6 million files including physical addresses, phone numbers, tax documents, pictures of driver's license IDs, etc. [REF-1296] [REF-1295]"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "private boolean isUserAuthentic = false;\n                     \n                     // authenticate user,\n                     \n                     \n                     // if user is authenticated then set variable to true\n                     \n                     \n                     // otherwise set variable to false\n                     public boolean authenticateUser(String username, String password) {...}\n                     public BankAccount createNewBankAccount(String accountNumber, String accountType,String accountName, String accountSSN, double balance) {\n                        BankAccount account = null;\n                           if (isUserAuthentic) {account = new BankAccount();account.setAccountNumber(accountNumber);account.setAccountType(accountType);account.setAccountOwnerName(accountName);account.setAccountOwnerSSN(accountSSN);account.setBalance(balance);}return account;\n                     }"
+      }
+    }
+  },
+  "798": {
+    "cwe_id": "798",
+    "cwe_title": "Use of Hard-coded Credentials",
+    "description": "The product contains hard-coded credentials, such as a password or cryptographic key.",
+    "extended_description": "Hard-coded credentials create a significant security vulnerability by embedding sensitive information directly into the source code or configuration files, making it accessible to anyone with access to the code or binary.",
+    "usage_scenarios": "Hard-coded credentials are often used in applications for database connections, administrative access, and diagnostic modes, where developers might embed passwords or keys directly into the code for convenience.",
+    "design_challenges": "Designing secure systems requires avoiding hard-coded credentials, which necessitates secure credential management solutions that can dynamically provide credentials at runtime without exposing them in the codebase.",
+    "expanded_use_cases": "Applications across various industries, including web applications, operational technology (OT), and embedded systems, have been found to use hard-coded credentials, leading to potential unauthorized access and system compromise.",
+    "design_constraints": "Systems must be designed to retrieve credentials securely at runtime, using environment variables, secure vaults, or other dynamic methods, without storing them in the code or configuration files in cleartext.",
+    "engineering_tradeoffs": "While hard-coded credentials simplify development and testing, they significantly compromise security. The trade-off involves investing in secure credential management solutions to enhance security at the cost of increased development complexity.",
+    "external_dependencies": "Secure credential management may depend on external services or libraries, such as HashiCorp Vault, AWS Secrets Manager, or Azure Key Vault, to securely store and retrieve credentials.",
+    "industry_best_practices": "Best practices include using environment variables for development, secure vaults for production, encrypting sensitive configuration files, and regularly rotating credentials to minimize the impact of potential exposures.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "DriverManager.getConnection(url, \"scott\", \"tiger\");"
+      },
+      "attack_example": {
+        "language": "Java",
+        "code": "javap -c ConnMngr.class22: ldc #36; //String jdbc:mysql://ixne.com/rxsql24: ldc #38; //String scott26: ldc #17; //String tiger"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "DriverManager.getConnection(url, System.getenv(\"DB_USER\"), System.getenv(\"DB_PASSWORD\"));"
+      }
+    }
+  },
+  "312": {
+    "cwe_id": "312",
+    "cwe_title": "Cleartext Storage of Sensitive Information",
+    "description": "The product stores sensitive information in cleartext within a resource that might be accessible to another control sphere.",
+    "extended_description": "Storing sensitive information such as passwords, user account IDs, and personal data in cleartext can lead to unauthorized access if the storage medium is compromised. This vulnerability is particularly critical in web applications, configuration files, and cloud storage where sensitive data is often stored without encryption.",
+    "usage_scenarios": "Web applications storing user credentials in cookies, configuration files containing database passwords, and cloud storage services storing sensitive data without encryption.",
+    "design_challenges": "Balancing usability with security, especially in scenarios where encryption might impact performance or user experience. Ensuring that encryption keys are managed securely to prevent unauthorized access.",
+    "expanded_use_cases": "Applications requiring user authentication, systems storing sensitive personal data, and cloud-based services handling confidential information.",
+    "design_constraints": "Must implement encryption for sensitive data at rest and in transit. Encryption mechanisms must be robust and keys must be securely managed.",
+    "engineering_tradeoffs": "Increased security measures may lead to higher computational overhead and complexity in key management. However, the trade-off is necessary to protect sensitive data from unauthorized access.",
+    "external_dependencies": "Reliance on encryption libraries and services (e.g., AWS S3 encryption settings, Azure encryption scopes) to securely manage and encrypt data.",
+    "industry_best_practices": "Use strong encryption algorithms for sensitive data. Implement secure key management practices. Regularly audit and review access controls and encryption settings.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "response.addCookie( new Cookie(\"userAccountID\", acctID);"
+      },
+      "attack_example": {
+        "language": "PHP",
+        "code": "function persistLogin($username, $password){$data = array(\"username\" => $username, \"password\"=> $password);setcookie (\"userdata\", $data);}"
+      },
+      "safe_code": {
+        "language": "Shell",
+        "code": "New-AzStorageEncryptionScope -ResourceGroupName \"MyResourceGroup\" -AccountName \"MyStorageAccount\" -EncryptionScopeName testscope -StorageEncryption -RequireInfrastructureEncryption"
+      }
+    }
+  },
+  "521": {
+    "cwe_id": "521",
+    "cwe_title": "Weak Password Requirements",
+    "description": "The product does not require that users should have strong passwords, which makes it easier for attackers to compromise user accounts.",
+    "extended_description": "Authentication mechanisms often rely on a memorized secret (also known as a password) to provide an assertion of identity for a user of a system. It is therefore important that this password be of sufficient complexity and impractical for an adversary to guess. The specific requirements around how complex a password needs to be depends on the type of system being protected. Selecting the correct password requirements and enforcing them through implementation are critical to the overall success of the authentication mechanism.",
+    "usage_scenarios": "This vulnerability commonly appears in web applications, mobile apps, and any system that requires user authentication without enforcing strong password policies.",
+    "design_challenges": "Balancing user convenience with security requirements is a key challenge. Too strict requirements may lead to user frustration or workarounds like writing down passwords, while too lenient requirements increase vulnerability to attacks.",
+    "expanded_use_cases": "Systems storing sensitive information, financial applications, and any service where user identity verification is crucial must enforce strong password policies to mitigate risks.",
+    "design_constraints": "Implementing password policies that require a mix of characters, numbers, and symbols, and enforcing minimum length can help, but must be carefully designed to not overly burden users.",
+    "engineering_tradeoffs": "Increased security measures may impact user experience and system performance due to additional checks and potential for increased support requests related to password recovery.",
+    "external_dependencies": "Dependencies may include third-party authentication services or libraries that enforce password policies. The effectiveness of these dependencies must be verified.",
+    "industry_best_practices": "Adopting standards like NIST guidelines for password policies, implementing multi-factor authentication, and educating users on creating strong passwords are recommended best practices.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Python",
+        "code": "def create_user(username, password):\n    # No password requirements\n    user = {'username': username, 'password': password}\n    return user"
+      },
+      "attack_example": {
+        "language": "Python",
+        "code": "def brute_force_attack(username):\n    common_passwords = ['password', '123456', 'qwerty']\n    for pwd in common_passwords:\n        if login(username, pwd):\n            return pwd\n    return None"
+      },
+      "safe_code": {
+        "language": "Python",
+        "code": "import re\n\ndef create_user(username, password):\n    # Enforce strong password\n    if not re.match(r'^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$', password):\n        raise ValueError('Password must be at least 8 characters, include letters, numbers, and special characters')\n    user = {'username': username, 'password': password}\n    return user"
+      }
+    }
+  },
+  "295": {
+    "cwe_id": "295",
+    "cwe_title": "Improper Certificate Validation",
+    "description": "The product does not validate, or incorrectly validates, a certificate.",
+    "extended_description": "When a certificate is invalid or malicious, it might allow an attacker to spoof a trusted entity by interfering in the communication path between the host and client. The product might connect to a malicious host while believing it is a trusted host, or the product might be deceived into accepting spoofed data that appears to originate from a trusted host.",
+    "usage_scenarios": "This vulnerability commonly appears in applications that use SSL/TLS for secure communications but fail to properly validate the certificates presented by the server. This can include web applications, mobile apps, and any client-server software that relies on certificate-based authentication.",
+    "design_challenges": "Ensuring proper certificate validation without significantly impacting performance or user experience is a key challenge. Developers must balance security with usability, especially in environments where certificates may frequently change or where users may interact with a wide range of servers.",
+    "expanded_use_cases": "Applications that require high levels of security, such as financial services, healthcare applications, and government systems, are particularly vulnerable to improper certificate validation. These use cases demand rigorous validation processes to prevent man-in-the-middle attacks and ensure data integrity.",
+    "design_constraints": "Developers must implement comprehensive certificate validation checks, including verifying the certificate chain, checking for revocation, and ensuring the certificate matches the hostname. These checks must be performed efficiently to avoid delays in establishing secure connections.",
+    "engineering_tradeoffs": "Implementing thorough certificate validation can increase the complexity of the code and may impact performance. However, the trade-off is necessary to prevent security vulnerabilities that could lead to data breaches or unauthorized access.",
+    "external_dependencies": "Proper certificate validation often relies on external certificate authorities (CAs) and certificate revocation lists (CRLs). Applications must have mechanisms to update these dependencies regularly to ensure they can validate certificates correctly.",
+    "industry_best_practices": "Developers should use established libraries and frameworks that provide robust certificate validation features. They should also stay informed about the latest security advisories and update their validation logic accordingly. Regularly testing the application's certificate validation logic is essential to identify and mitigate vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "if (cert = SSL_get_peer_certificate(ssl)) {\n                        \n                           \n                           // got a certificate, do secret things"
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "An attacker could exploit this vulnerability by presenting a self-signed certificate or a certificate that has been revoked. The application, failing to properly validate the certificate, would proceed with the connection, allowing the attacker to intercept or manipulate the data."
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "if (cert = SSL_get_peer_certificate(ssl)) {\n                        foo=SSL_get_verify_result(ssl);\n                        if (X509_V_OK==foo) {\n                           \n                              // certificate is valid, proceed with secure operations\n                           \n                        }\n                     }"
+      }
+    }
+  },
+  "352": {
+    "cwe_id": "352",
+    "cwe_title": "Cross-Site Request Forgery (CSRF)",
+    "description": "The web application does not, or can not, sufficiently verify whether a well-formed, valid, consistent request was intentionally provided by the user who submitted the request.",
+    "extended_description": "When a web server is designed to receive a request from a client without any mechanism for verifying that it was intentionally sent, then it might be possible for an attacker to trick a client into making an unintentional request to the web server which will be treated as an authentic request. This can be done via a URL, image load, XMLHttpRequest, etc. and can result in exposure of data or unintended code execution.",
+    "usage_scenarios": "CSRF vulnerabilities are commonly exploited in web applications where the server relies solely on session cookies to authenticate requests from a user's browser, without requiring any additional verification that the user intended to submit the request.",
+    "design_challenges": "Designing web applications that can distinguish between legitimate requests initiated by the user and forged requests initiated by an attacker without negatively impacting user experience.",
+    "expanded_use_cases": "CSRF attacks can target any web application feature that changes state on the server, including changing email addresses, passwords, or making financial transactions, especially in applications that rely on automatic submission of session cookies.",
+    "design_constraints": "Implementing CSRF protections must balance security with usability, ensuring that legitimate users are not burdened with excessive verification steps while still preventing unauthorized actions.",
+    "engineering_tradeoffs": "Adding CSRF tokens to forms and AJAX requests increases security but may complicate application development and slightly increase the size of web pages and the number of server-side validations required.",
+    "external_dependencies": "Effective CSRF mitigation may depend on the web framework's support for anti-CSRF tokens and the browser's handling of same-origin policies and cookie attributes like SameSite.",
+    "industry_best_practices": "Use anti-CSRF tokens, enforce SameSite cookie attributes, implement double-submit cookie patterns, and require re-authentication for sensitive actions. Frameworks with built-in CSRF protection should be preferred.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "session_start();\nif (! session_is_registered(\"username\")) {\n   echo \"invalid session detected!\";\n   exit;\n}\nupdate_profile();\nfunction update_profile {\n   SendUpdateToDatabase($_SESSION['username'], $_POST['email']);\n   echo \"Your profile has been successfully updated.\";\n}"
+      },
+      "attack_example": {
+        "language": "HTML",
+        "code": "<SCRIPT>function SendAttack () {form.email = \"attacker@example.com\";\nform.submit();}</SCRIPT>\n<BODY onload=\"javascript:SendAttack();\">\n<form action=\"http://victim.example.com/profile.php\" id=\"form\" method=\"post\"><input type=\"hidden\" name=\"firstname\" value=\"Funny\"><input type=\"hidden\" name=\"lastname\" value=\"Joke\"><br/><input type=\"hidden\" name=\"email\"></form>"
+      },
+      "safe_code": {
+        "language": "PHP",
+        "code": "session_start();\nif (! session_is_registered(\"username\")) {\n   echo \"invalid session detected!\";\n   exit;\n}\nif (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {\n   die(\"CSRF token validation failed\");\n}\nupdate_profile();\nfunction update_profile {\n   SendUpdateToDatabase($_SESSION['username'], $_POST['email']);\n   echo \"Your profile has been successfully updated.\";\n}"
+      }
+    }
+  },
+  "345": {
+    "cwe_id": "345",
+    "cwe_title": "Insufficient Verification of Data Authenticity",
+    "description": "The product does not sufficiently verify the origin or authenticity of data, in a way that causes it to accept invalid data.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability is particularly critical in systems where data integrity and authenticity are paramount, such as in firmware updates for operational technology (OT) devices, software updates, and any system that relies on data from external sources.",
+    "design_challenges": "Ensuring data authenticity without significantly impacting system performance or user experience is a key challenge. Developers must balance security measures with system efficiency.",
+    "expanded_use_cases": "Use cases include firmware updates in critical infrastructure sectors like power, water, and electrical systems, where unauthorized code execution could have safety implications.",
+    "design_constraints": "Systems must be designed to verify the authenticity of data without introducing unacceptable delays or complexity that could hinder usability or performance.",
+    "engineering_tradeoffs": "Implementing robust verification mechanisms may increase system complexity and resource usage, potentially affecting performance and development timelines.",
+    "external_dependencies": "Reliance on cryptographic libraries and secure key management systems is essential for implementing effective data authenticity verification.",
+    "industry_best_practices": "Use digital signatures to verify the authenticity of firmware and software updates. Implement secure boot mechanisms to ensure only signed code is executed. Regularly update cryptographic keys and algorithms to mitigate against emerging threats.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "text",
+        "code": "Firmware update process does not verify the digital signature of the firmware image before installation."
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "An attacker replaces a legitimate firmware image with a malicious one. Since the system does not verify the image's signature, the malicious firmware is installed."
+      },
+      "safe_code": {
+        "language": "text",
+        "code": "Before installation, the system verifies the digital signature of the firmware image against a trusted public key to ensure its authenticity and integrity."
+      }
+    }
+  },
+  "22": {
+    "cwe_id": "22",
+    "cwe_title": "Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+    "description": "The product uses external input to construct a pathname that is intended to identify a file or directory that is located underneath a restricted parent directory, but the product does not properly neutralize special elements within the pathname that can cause the pathname to resolve to a location that is outside of the restricted directory.",
+    "extended_description": "Path traversal vulnerabilities allow an attacker to access files and directories that are stored outside the intended directory. By manipulating variables that reference files with 'dot-dot-slash (../)' sequences and their variations or by using absolute file paths, attackers can traverse the file system to access unauthorized files or directories.",
+    "usage_scenarios": "This vulnerability commonly appears in web applications that allow file uploads or access based on user input, such as profile viewing features, file download functionalities, or any feature that constructs file paths dynamically based on user input.",
+    "design_challenges": "Designing a system that safely handles user input to construct file paths without exposing the underlying file system to unauthorized access. Ensuring that all user-supplied input is properly sanitized to prevent directory traversal attacks.",
+    "expanded_use_cases": "Applications that require dynamic file access based on user input, such as content management systems, file sharing services, and web servers that serve files based on URL parameters.",
+    "design_constraints": "The system must validate and sanitize all user input used in file path construction. It should also enforce strict access controls to files and directories, limiting access to only those that are necessary for the application's functionality.",
+    "engineering_tradeoffs": "Increased security measures may introduce complexity in file handling and potentially impact performance due to additional validation steps. However, the trade-off is necessary to prevent unauthorized access to sensitive files.",
+    "external_dependencies": "Reliance on programming language and operating system functions for path resolution and file access. The behavior of these functions can vary across different platforms and must be carefully considered in the application's security design.",
+    "industry_best_practices": "Use of allowlists to restrict file access to predefined, safe locations. Implementation of proper input validation and sanitization routines. Regular security audits and testing to identify and mitigate potential path traversal vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Perl",
+        "code": "my $dataPath = \"/users/cwe/profiles\";my $username = param(\"user\");my $profilePath = $dataPath . \"/\" . $username;\n                     open(my $fh, \"<\", $profilePath) || ExitError(\"profile read error: $profilePath\");print \"<ul>\\n\";while (<$fh>) {print \"<li>$_</li>\\n\";}print \"</ul>\\n\";"
+      },
+      "attack_example": {
+        "language": null,
+        "code": "../../../etc/passwd"
+      },
+      "safe_code": {
+        "language": "Python",
+        "code": "import os\n                     import sys\n                     def main():\n                     \n                       filename = sys.argv[1]\n                       path = os.path.normpath(f\"{os.getcwd()}{os.sep}{filename}\")\n\t\t       if path.startswith(\"/home/cwe/documents/\"):\n\t\t       \n\t\t\t try:\n\t\t\t \n                           with open(path, 'r') as f:\n                           \n                             file_data = f.read()\n                           \n\t\t\t \n\t\t\t except FileNotFoundError as e:\n\t\t\t \n                           print(\"Error - file not found\")\n\t\t\t \n                       \n\t\t     \n                     main()"
+      }
+    }
+  },
+  "200": {
+    "cwe_id": "200",
+    "cwe_title": "Exposure of Sensitive Information to an Unauthorized Actor",
+    "description": "The product exposes sensitive information to an actor that is not explicitly authorized to have access to that information.",
+    "extended_description": "This vulnerability occurs when sensitive data is inadvertently made available to users or systems that should not have access to it, potentially leading to unauthorized access or other security breaches.",
+    "usage_scenarios": "Common scenarios include error messages revealing system details, debug information exposed in production environments, and unnecessary display of sensitive user data.",
+    "design_challenges": "Balancing user feedback and system transparency with security and privacy concerns is a key challenge. Ensuring that error messages are helpful without revealing sensitive information requires careful design.",
+    "expanded_use_cases": "Applications that handle user authentication, database operations, and personal data are particularly susceptible to this vulnerability.",
+    "design_constraints": "Systems must be designed to limit the exposure of sensitive information in logs, error messages, and user interfaces, even in failure scenarios.",
+    "engineering_tradeoffs": "There is a trade-off between providing detailed error messages for debugging and user assistance, and the risk of exposing sensitive information. Simplifying error messages can enhance security but may reduce usability.",
+    "external_dependencies": "Dependencies on third-party libraries or services that handle sensitive data must be carefully vetted to ensure they do not inadvertently expose information.",
+    "industry_best_practices": "Implementing uniform error messages for authentication failures, encrypting sensitive data in logs, and applying the principle of least privilege in data access are recommended practices.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Perl",
+        "code": "my $username=param('username');\nmy $password=param('password');\n\nif (IsValidUsername($username) == 1)\n{\nif (IsValidPassword($username, $password) == 1)\n{\nprint \"Login Successful\";\n}\nelse\n{\nprint \"Login Failed - incorrect password\";\n}\n}\nelse\n{\nprint \"Login Failed - unknown username\";\n}"
+      },
+      "attack_example": {
+        "language": "SQL",
+        "code": "Warning: mysql_pconnect(): Access denied for user: 'root@localhost' (Using password: N1nj4) in /usr/local/www/wi-data/includes/database.inc on line 4"
+      },
+      "safe_code": {
+        "language": "Perl",
+        "code": "\"Login Failed - incorrect username or password\""
+      }
+    }
+  },
+  "335": {
+    "cwe_id": "335",
+    "cwe_title": "Incorrect Usage of Seeds in Pseudo-Random Number Generator (PRNG)",
+    "description": "The product uses a Pseudo-Random Number Generator (PRNG) but does not correctly manage seeds.",
+    "extended_description": "Incorrect seed management in PRNGs can lead to predictable random numbers, making systems vulnerable to attacks. This includes using static seeds, time-based seeds, or insufficiently random seeds.",
+    "usage_scenarios": "PRNGs are commonly used in generating account IDs, cryptographic keys, and any scenario requiring random number generation.",
+    "design_challenges": "Ensuring the unpredictability of seeds in PRNGs without significantly impacting performance or complexity.",
+    "expanded_use_cases": "Beyond basic random number generation, PRNGs are used in cryptography, simulations, and gaming for randomness.",
+    "design_constraints": "Must balance between randomness quality, performance, and security requirements.",
+    "engineering_tradeoffs": "Higher quality randomness may require more computational resources or more complex seed generation mechanisms.",
+    "external_dependencies": "Dependence on system time or other predictable sources for seed generation can introduce vulnerabilities.",
+    "industry_best_practices": "Use cryptographically secure PRNGs when security is a concern. Ensure seeds are generated from a high-entropy source. Avoid using predictable values like system time as seeds.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "private static final long SEED = 1234567890;public int generateAccountID() {Random random = new Random(SEED);return random.nextInt();}"
+      },
+      "attack_example": {
+        "language": "Java",
+        "code": "Random random = new Random(System.currentTimeMillis());int accountID = random.nextInt();"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "SecureRandom random = new SecureRandom();int accountID = random.nextInt();"
+      }
+    }
+  },
+  "643": {
+    "cwe_id": "643",
+    "cwe_title": "Improper Neutralization of Data within XPath Expressions ('XPath Injection')",
+    "description": "The product uses external input to dynamically construct an XPath expression used to retrieve data from an XML database, but it does not neutralize or incorrectly neutralizes that input. This allows an attacker to control the structure of the query.",
+    "extended_description": "The net effect is that the attacker will have control over the information selected from the XML database and may use that ability to control application flow, modify logic, retrieve unauthorized data, or bypass important checks (e.g. authentication).",
+    "usage_scenarios": "XPath Injection vulnerabilities typically occur in web applications that use XML databases for storing user data, such as authentication information, and dynamically construct XPath queries with user-supplied input.",
+    "design_challenges": "Designing applications that safely handle user input in XPath queries without exposing vulnerabilities requires careful consideration of input validation and query construction methods.",
+    "expanded_use_cases": "Applications that rely on XML databases for data storage and retrieval, especially those requiring user authentication, are at risk if they dynamically construct XPath queries with user input.",
+    "design_constraints": "Applications must ensure that all user-supplied input used in XPath queries is properly neutralized to prevent injection attacks.",
+    "engineering_tradeoffs": "Implementing rigorous input validation and parameterized XPath queries may introduce additional complexity and performance overhead but is necessary for security.",
+    "external_dependencies": "Applications may depend on XML database technologies and XPath processing libraries that must be securely configured and updated to mitigate vulnerabilities.",
+    "industry_best_practices": "Use parameterized XPath queries or prepared statements to separate data from logic, implement strict input validation, and employ least privilege principles for database access.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "XPath xpath = XPathFactory.newInstance().newXPath();XPathExpression xlogin = xpath.compile(\"//users/user[login/text()='\" + login.getUserName() + \"' and password/text() = '\" + login.getPassword() + \"']/home_dir/text()\");Document d = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new File(\"db.xml\"));String homedir = xlogin.evaluate(d);"
+      },
+      "attack_example": {
+        "language": "XPath",
+        "code": "//users/user[login/text()='john' or ''='' and password/text() = '' or ''='']/home_dir/text()"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "XPath xpath = XPathFactory.newInstance().newXPath();XPathExpression expr = xpath.compile(\"//users/user[login/text()=$login and password/text()=$password]/home_dir/text()\");Map<String, String> variables = new HashMap<String, String>();variables.put(\"login\", login.getUserName());variables.put(\"password\", login.getPassword());String homedir = expr.evaluate(d, variables);"
+      }
+    }
+  },
+  "242": {
+    "cwe_id": "242",
+    "cwe_title": "Use of Inherently Dangerous Function",
+    "description": "The product calls a function that can never be guaranteed to work safely.",
+    "extended_description": "Certain functions behave in dangerous ways regardless of how they are used. Functions in this category were often implemented without taking security concerns into account. The gets() function is unsafe because it does not perform bounds checking on the size of its input. An attacker can easily send arbitrarily-sized input to gets() and overflow the destination buffer. Similarly, the >> operator is unsafe to use when reading into a statically-allocated character array because it does not perform bounds checking on the size of its input. An attacker can easily send arbitrarily-sized input to the >> operator and overflow the destination buffer.",
+    "usage_scenarios": "In scenarios where input size is not controlled or validated, such as reading user input from the command line or from a file without proper bounds checking.",
+    "design_challenges": "Ensuring input validation and bounds checking in all scenarios where user or external input is processed, especially in legacy systems where inherently dangerous functions are used.",
+    "expanded_use_cases": "Legacy systems maintenance, development of new systems where input validation is crucial, and security auditing of existing codebases.",
+    "design_constraints": "Must replace or wrap inherently dangerous functions with safer alternatives that perform bounds checking and input validation.",
+    "engineering_tradeoffs": "Increased development time and complexity for implementing safer input handling mechanisms versus the risk of buffer overflow vulnerabilities.",
+    "external_dependencies": "Dependence on secure libraries or functions that provide safe alternatives to inherently dangerous functions.",
+    "industry_best_practices": "Use of functions that perform bounds checking, such as fgets() instead of gets(), and employing static and dynamic analysis tools to identify and mitigate the use of inherently dangerous functions.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "char buf[BUFSIZE]; gets(buf);"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "char buf[24]; printf(\"Please enter your name and press <Enter>\\n\"); gets(buf);"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "char buf[BUFSIZE]; fgets(buf, BUFSIZE, stdin);"
+      }
+    }
+  },
+  "665": {
+    "cwe_id": "665",
+    "cwe_title": "Improper Initialization",
+    "description": "The product does not initialize or incorrectly initializes a resource, which might leave the resource in an unexpected state when it is accessed or used.",
+    "extended_description": "This can have security implications when the associated resource is expected to have certain properties or values, such as a variable that determines whether a user has been authenticated or not.",
+    "usage_scenarios": "Improper initialization can occur in various scenarios, including but not limited to, authentication mechanisms, resource allocation, and data handling where variables or objects are not properly initialized before use.",
+    "design_challenges": "Ensuring that all variables and resources are properly initialized before use, especially in complex systems where initialization might depend on external factors or conditions.",
+    "expanded_use_cases": "Use cases include web applications, operating systems, and any software that handles sensitive data or requires secure access control mechanisms.",
+    "design_constraints": "Design must account for all possible states of variables and resources, ensuring they are initialized correctly under all conditions, including error states.",
+    "engineering_tradeoffs": "The trade-off often involves performance versus security, where initializing resources might introduce overhead but is necessary for security.",
+    "external_dependencies": "Dependencies on external systems or data for initialization can introduce vulnerabilities if those systems fail or provide incorrect data.",
+    "industry_best_practices": "Best practices include always initializing variables, using static analysis tools to detect uninitialized variables, and implementing secure coding standards that enforce proper initialization.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "private boolean initialized = true;public void someMethod() {\n                        if (!initialized) {\n                              \n                                 \n                                 // perform initialization tasks\n                                 ...\n                                 initialized = true;\n                           }"
+      },
+      "attack_example": {
+        "language": "Perl",
+        "code": "$username = GetCurrentUser();$state = GetStateData($username);if (defined($state)) {$uid = ExtractUserID($state);}\n                     \n                     # do stuff\n                     if ($uid == 0) {DoAdminThings();}"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "char str[20] = {0};strcat(str, \"hello world\");printf(\"%s\", str);"
+      }
+    }
+  },
+  "328": {
+    "cwe_id": "328",
+    "cwe_title": "Use of Weak Hash",
+    "description": "The product uses an algorithm that produces a digest (output value) that does not meet security expectations for a hash function that allows an adversary to reasonably determine the original input (preimage attack), find another input that can produce the same hash (2nd preimage attack), or find multiple inputs that evaluate to the same hash (birthday attack).",
+    "extended_description": "Weak hash functions can compromise the security of a system by making it easier for attackers to reverse engineer passwords or forge data. This vulnerability is particularly critical in systems that rely on cryptographic authentication mechanisms.",
+    "usage_scenarios": "Weak hash functions are often found in password storage mechanisms, cryptographic authentication protocols, and data integrity checks.",
+    "design_challenges": "Designing secure systems requires selecting hash functions that are resistant to preimage, 2nd preimage, and birthday attacks. The challenge is to balance computational efficiency with cryptographic strength.",
+    "expanded_use_cases": "Beyond password storage, weak hashes can affect any system component that relies on cryptographic hashing for security, including digital signatures, message authentication codes (MACs), and blockchain technologies.",
+    "design_constraints": "Systems must use cryptographically strong hash functions (e.g., SHA-256, SHA-3) and incorporate salt to mitigate rainbow table attacks. Performance considerations may limit the choice of hash functions in resource-constrained environments.",
+    "engineering_tradeoffs": "Using stronger hash functions may increase computational overhead and system latency. However, the trade-off is justified by the enhanced security against brute-force and collision attacks.",
+    "external_dependencies": "The security of hash functions depends on the cryptographic community's ongoing evaluation of their strength. Systems may need to update their hash functions in response to newly discovered vulnerabilities.",
+    "industry_best_practices": "Use modern, cryptographically secure hash functions; implement salt to prevent rainbow table attacks; and regularly review and update cryptographic practices in line with current standards.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "unsigned char *check_passwd(char *plaintext) {ctext = simple_digest(\"sha1\",plaintext,strlen(plaintext), ... );\n                        //Login if hash matches stored hash\n                        if (equal(ctext, secret_password())) {login_user();}}"
+      },
+      "attack_example": {
+        "language": "Verilog",
+        "code": "...\n               logic [31:0] data_d, data_q\n               logic [512-1:0] pass_data;\n               ...\n                  \n                  Write: begin\n                     \n                     ...\n                        \n                        if (pass_mode) begin\n                           \n                           pass_data = { {60{8'h00}}, data_d};\n                           state_d = PassChk;\n                           pass_mode = 1'b0;\n                           \n                        ...\n                        \n                     \n                  end\n                  \n               ..."
+      },
+      "safe_code": {
+        "language": "Verilog",
+        "code": "...\n               logic [512-1:0] data_d, data_q\n               logic [512-1:0] pass_data;\n               ...\n                  \n                  Write: begin\n                     \n                     ...\n                        \n                        if (pass_mode) begin\n                           \n                           pass_data = data_d;\n                           state_d = PassChk;\n                           pass_mode = 1'b0;\n                           \n                        ...\n                        \n                     \n                  end\n                  \n               ..."
+      }
+    }
+  },
+  "338": {
+    "cwe_id": "338",
+    "cwe_title": "Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)",
+    "description": "The product uses a Pseudo-Random Number Generator (PRNG) in a security context, but the PRNG's algorithm is not cryptographically strong.",
+    "extended_description": "This vulnerability arises when a system employs a PRNG that does not meet the cryptographic strength required for security-sensitive applications, making it predictable and susceptible to attacks.",
+    "usage_scenarios": "Common in applications requiring random number generation for security purposes such as encryption keys, session tokens, and password generation.",
+    "design_challenges": "Balancing performance and security when selecting a PRNG, especially in resource-constrained environments.",
+    "expanded_use_cases": "Secure communication protocols, cryptographic key generation, and any system requiring unpredictable output for security mechanisms.",
+    "design_constraints": "Must ensure the PRNG used is cryptographically secure and properly seeded to avoid predictability.",
+    "engineering_tradeoffs": "Using a cryptographically strong PRNG may introduce performance overhead but is essential for security.",
+    "external_dependencies": "Reliance on the underlying operating system or libraries for secure random number generation.",
+    "industry_best_practices": "Use cryptographically secure PRNGs like /dev/random or /dev/urandom on Unix-like systems, or SecureRandom in Java. Ensure proper seeding with sufficient entropy.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "Random random = new Random(System.currentTimeMillis());\nint accountID = random.nextInt();"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "srand(time());\nint randNum = rand();"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "SecureRandom secureRandom = new SecureRandom();\nint accountID = secureRandom.nextInt();"
+      }
+    }
+  },
+  "601": {
+    "cwe_id": "601",
+    "cwe_title": "URL Redirection to Untrusted Site ('Open Redirect')",
+    "description": "The web application accepts a user-controlled input that specifies a link to an external site, and uses that link in a redirect.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability typically appears in web applications that implement redirect functionality based on user input, such as login redirects, logout redirects, or any feature that navigates the user to another URL.",
+    "design_challenges": "Ensuring security while maintaining user convenience and functionality, such as allowing legitimate redirects but blocking malicious ones.",
+    "expanded_use_cases": "Web applications that require redirecting users to external sites for legitimate reasons, such as payment gateways or third-party services.",
+    "design_constraints": "The need to validate URLs before redirecting, which may require maintaining a list of trusted domains or implementing URL validation logic.",
+    "engineering_tradeoffs": "Balancing between security (validating URLs) and performance (the overhead of validation checks).",
+    "external_dependencies": "Potential reliance on third-party services or libraries for URL validation or domain reputation checks.",
+    "industry_best_practices": "Implementing a whitelist of allowed domains for redirects, validating and sanitizing all user-supplied URLs, and using secure coding practices to prevent open redirect vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "$redirect_url = $_GET['url'];header(\"Location: \" . $redirect_url);"
+      },
+      "attack_example": {
+        "language": "HTML",
+        "code": "<a href=\"http://bank.example.com/redirect?url=http://attacker.example.net\">Click here to log in</a>"
+      },
+      "safe_code": {
+        "language": "PHP",
+        "code": "$allowed_domains = ['trusted.example.com', 'anothertrusted.example.com'];\n$redirect_url = $_GET['url'];\n$parsed_url = parse_url($redirect_url);\nif (in_array($parsed_url['host'], $allowed_domains)) {\n    header(\"Location: \" . $redirect_url);\n} else {\n    header(\"Location: /error.php\");\n}"
+      }
+    }
+  },
+  "330": {
+    "cwe_id": "330",
+    "cwe_title": "Use of Insufficiently Random Values",
+    "description": "The product uses insufficiently random numbers or values in a security context that depends on unpredictable numbers.",
+    "extended_description": "When product generates predictable values in a context requiring unpredictability, it may be possible for an attacker to guess the next value that will be generated, and use this guess to impersonate another user or access sensitive information.",
+    "usage_scenarios": "Generating session IDs, cryptographic keys, or any security-sensitive tokens where predictability can lead to security breaches.",
+    "design_challenges": "Balancing performance and security when generating random values, especially in environments with limited resources.",
+    "expanded_use_cases": "Secure communication protocols, authentication mechanisms, and any system requiring secure random number generation.",
+    "design_constraints": "Must ensure that the random number generation is sufficiently unpredictable to prevent attackers from guessing or reproducing the sequence.",
+    "engineering_tradeoffs": "Using cryptographically secure random number generators may impact performance but significantly enhances security.",
+    "external_dependencies": "Reliance on the underlying platform's random number generation capabilities and the quality of its implementation.",
+    "industry_best_practices": "Use cryptographic libraries and functions designed for secure random number generation, such as Java's SecureRandom or OpenSSL's RAND_bytes.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "function generateSessionID($userID){srand($userID);return rand();}"
+      },
+      "attack_example": {
+        "language": "Java",
+        "code": "String GenerateReceiptURL(String baseUrl) {Random ranGen = new Random();ranGen.setSeed((new Date()).getTime());return(baseUrl + ranGen.nextInt(400000000) + \".html\");}"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "String GenerateReceiptURL(String baseUrl) {SecureRandom secureRandom = new SecureRandom();return(baseUrl + secureRandom.nextInt(400000000) + \".html\");}"
+      }
+    }
+  },
+  "759": {
+    "cwe_id": "759",
+    "cwe_title": "Use of a One-Way Hash without a Salt",
+    "description": "The product uses a one-way cryptographic hash against an input that should not be reversible, such as a password, but the product does not also use a salt as part of the input.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in authentication systems where passwords are stored as hashes without salts, making them vulnerable to precomputed hash attacks like rainbow tables.",
+    "design_challenges": "Implementing a secure password storage mechanism requires balancing security with performance and usability. Adding salts increases security but may introduce complexity in salt management and storage.",
+    "expanded_use_cases": "Secure authentication systems, password recovery mechanisms, and user credential storage.",
+    "design_constraints": "Must ensure that salts are unique for each password, sufficiently random, and securely stored alongside the hashed passwords.",
+    "engineering_tradeoffs": "Using salts enhances security at the cost of additional storage and processing requirements. The choice of hash algorithm also impacts security and performance.",
+    "external_dependencies": "Dependence on cryptographic libraries for hash functions and random number generation for salt creation.",
+    "industry_best_practices": "Use modern, secure hash algorithms like bcrypt, scrypt, or Argon2 for password hashing. Ensure each password has a unique, random salt. Store salts securely alongside hashed passwords.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Python",
+        "code": "def storePassword(userName,Password):hasher = hashlib.new('md5')hasher.update(Password)hashedPassword = hasher.digest()\n                        \n                        # UpdateUserLogin returns True on success, False otherwise\n                        return updateUserLogin(userName,hashedPassword)"
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "An attacker who gains access to the hashed passwords can use precomputed rainbow tables to reverse the hashes and discover the original passwords, especially if no salt was used."
+      },
+      "safe_code": {
+        "language": "Python",
+        "code": "def storePassword(userName,Password):hasher = hashlib.new('md5',b'SaltGoesHere')hasher.update(Password)hashedPassword = hasher.digest()\n                        \n                        # UpdateUserLogin returns True on success, False otherwise\n                        return updateUserLogin(userName,hashedPassword)"
+      }
+    }
+  },
+  "918": {
+    "cwe_id": "918",
+    "cwe_title": "Server-Side Request Forgery (SSRF)",
+    "description": "The web server receives a URL or similar request from an upstream component and retrieves the contents of this URL, but it does not sufficiently ensure that the request is being sent to the expected destination.",
+    "extended_description": "Server-Side Request Forgery (SSRF) vulnerabilities occur when an attacker can influence the web server to make requests to internal services that were not intended to be exposed. This can lead to unauthorized actions or access to data within the organization's internal network.",
+    "usage_scenarios": "SSRF vulnerabilities are commonly exploited in cloud environments where internal metadata services can be accessed, or in applications that fetch and display external resources based on user input.",
+    "design_challenges": "Designing systems that safely handle user-provided URLs without exposing internal services requires careful validation and sanitization of inputs, as well as network-level protections.",
+    "expanded_use_cases": "Applications that integrate with third-party services or fetch resources based on dynamic URLs are particularly susceptible to SSRF if not properly secured.",
+    "design_constraints": "Systems must enforce strict input validation, use allowlists for acceptable domains or IP ranges, and implement network segmentation to limit the impact of potential SSRF vulnerabilities.",
+    "engineering_tradeoffs": "Implementing comprehensive SSRF protections may introduce complexity and performance overhead, but these tradeoffs are necessary to prevent potentially severe security breaches.",
+    "external_dependencies": "Reliance on third-party services or libraries for URL fetching can introduce SSRF vulnerabilities if those components do not properly validate or restrict requests.",
+    "industry_best_practices": "Use allowlists for domains and IP addresses, disable unnecessary URL schemes (e.g., file://, ftp://), implement network-level protections (e.g., firewalls, VPNs), and regularly audit and test for SSRF vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "<?php\n$url = $_GET['url'];\n$content = file_get_contents($url);\necho $content;\n?>"
+      },
+      "attack_example": {
+        "language": "URL",
+        "code": "http://vulnerable.example.com/fetch.php?url=http://169.254.169.254/latest/meta-data/"
+      },
+      "safe_code": {
+        "language": "PHP",
+        "code": "<?php\n$allowed_domains = ['example.com', 'trusted.org'];\n$url = $_GET['url'];\n$parsed_url = parse_url($url);\nif (in_array($parsed_url['host'], $allowed_domains)) {\n    $content = file_get_contents($url);\n    echo $content;\n} else {\n    echo 'Access denied';\n}\n?>"
+      }
+    }
+  },
+  "862": {
+    "cwe_id": "862",
+    "cwe_title": "Missing Authorization",
+    "description": "The product does not perform an authorization check when an actor attempts to access a resource or perform an action.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in web applications where users can access or modify data without proper checks to confirm their authorization level. It's prevalent in functions that handle sensitive data, such as user profiles, private messages, or administrative functions.",
+    "design_challenges": "Implementing robust authorization checks without significantly impacting performance or user experience is a key challenge. Developers must balance security with usability, ensuring that authorization checks are both efficient and comprehensive.",
+    "expanded_use_cases": "Beyond web applications, this vulnerability can affect any system where resources are accessed or actions are performed based on user input without verifying the user's permissions. This includes APIs, desktop applications, and embedded systems.",
+    "design_constraints": "Systems must be designed to verify the authorization level of a user before allowing access to resources or actions. This requires a clear understanding of the system's user roles and permissions model.",
+    "engineering_tradeoffs": "Adding authorization checks can introduce latency and complexity to the system. Developers must carefully design these checks to minimize their impact on performance while ensuring they are effective.",
+    "external_dependencies": "Authorization mechanisms may depend on external systems or services, such as LDAP directories or OAuth providers, for verifying user permissions. These dependencies must be reliable and secure to prevent vulnerabilities.",
+    "industry_best_practices": "Implement the principle of least privilege, ensuring users have only the permissions they need. Use role-based access control (RBAC) or attribute-based access control (ABAC) to manage permissions. Regularly audit and test authorization mechanisms to identify and fix vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "PHP",
+        "code": "function runEmployeeQuery($dbName, $name){mysql_select_db($dbName,$globalDbHandle) or die(\"Could not open Database\".$dbName);\n                        //Use a prepared statement to avoid CWE-89\n                        $preparedStatement = $globalDbHandle->prepare('SELECT * FROM employees WHERE name = :name');$preparedStatement->execute(array(':name' => $name));return $preparedStatement->fetchAll();}\n                     /.../\n                     \n                     $employeeRecord = runEmployeeQuery('EmployeeDB',$_GET['EmployeeName']);"
+      },
+      "attack_example": {
+        "language": "Perl",
+        "code": "sub DisplayPrivateMessage {my($id) = @_;my $Message = LookupMessageObject($id);print \"From: \" . encodeHTML($Message->{from}) . \"<br>\\n\";print \"Subject: \" . encodeHTML($Message->{subject}) . \"\\n\";print \"<hr>\\n\";print \"Body: \" . encodeHTML($Message->{body}) . \"\\n\";}\n                     my $q = new CGI;\n                     # For purposes of this example, assume that CWE-309 and\n                     \n                     \n                     \n                     # CWE-523 do not apply.\n                     if (! AuthenticateUser($q->param('username'), $q->param('password'))) {ExitError(\"invalid username or password\");}\n                     my $id = $q->param('id');DisplayPrivateMessage($id);"
+      },
+      "safe_code": {
+        "language": "PHP",
+        "code": "function runEmployeeQuery($dbName, $name, $userId){mysql_select_db($dbName,$globalDbHandle) or die(\"Could not open Database\".$dbName);\n                        //Check if the user is authorized to access employee data\n                        if (!isAuthorized($userId, 'access_employee_data')) {\n                            die(\"Unauthorized access attempt\");\n                        }\n                        //Use a prepared statement to avoid CWE-89\n                        $preparedStatement = $globalDbHandle->prepare('SELECT * FROM employees WHERE name = :name');$preparedStatement->execute(array(':name' => $name));return $preparedStatement->fetchAll();}\n                     /.../\n                     \n                     $employeeRecord = runEmployeeQuery('EmployeeDB',$_GET['EmployeeName'], $_SESSION['userId']);"
+      }
+    }
+  },
+  "377": {
+    "cwe_id": "377",
+    "cwe_title": "Insecure Temporary File",
+    "description": "Creating and using insecure temporary files can leave application and system data vulnerable to attack.",
+    "extended_description": "This vulnerability arises when applications create temporary files in an insecure manner, making them susceptible to unauthorized access or modification. This can lead to information disclosure, data corruption, or even arbitrary code execution.",
+    "usage_scenarios": "Temporary files are commonly used for storing intermediate data during processing, caching, or as a means of inter-process communication. However, if not handled securely, they can become a vector for attacks.",
+    "design_challenges": "Ensuring secure creation, use, and deletion of temporary files across different operating systems and environments poses significant challenges. Developers must account for race conditions, proper permissions, and secure deletion practices.",
+    "expanded_use_cases": "Applications that process large amounts of data or require temporary storage for sensitive information must implement secure temporary file handling to prevent data leaks or corruption.",
+    "design_constraints": "Secure temporary file handling requires careful consideration of file permissions, unique file naming, and secure deletion mechanisms. Cross-platform compatibility adds another layer of complexity.",
+    "engineering_tradeoffs": "Implementing secure temporary file handling may introduce performance overhead due to additional checks and operations. However, the trade-off is necessary for maintaining application and data security.",
+    "external_dependencies": "Secure temporary file handling may depend on operating system features or third-party libraries that provide secure functions for file creation and management.",
+    "industry_best_practices": "Use secure functions for temporary file creation (e.g., mkstemp on Unix-like systems). Ensure files are created with restrictive permissions. Use unique, unpredictable file names. Securely delete temporary files after use.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "if (tmpnam_r(filename)) {\n                        \n                           FILE* tmp = fopen(filename,\"wb+\");while((recv(sock,recvbuf,DATA_SIZE, 0) > 0)&(amt!=0)) amt = fwrite(recvbuf,1,DATA_SIZE,tmp);\n                     }..."
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "An attacker could predict or discover the name of the temporary file and modify its contents, leading to data corruption or execution of malicious code."
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "char filename[] = \"/tmp/mytempfile-XXXXXX\";\nint fd = mkstemp(filename);\nif (fd != -1) {\n    FILE* tmp = fdopen(fd, \"wb+\");\n    while((recv(sock, recvbuf, DATA_SIZE, 0) > 0) && (amt != 0)) amt = fwrite(recvbuf, 1, DATA_SIZE, tmp);\n    fclose(tmp);\n    unlink(filename);\n}"
+      }
+    }
+  },
+  "290": {
+    "cwe_id": "290",
+    "cwe_title": "Authentication Bypass by Spoofing",
+    "description": "This attack-focused weakness is caused by incorrectly implemented authentication schemes that are subject to spoofing attacks.",
+    "extended_description": "",
+    "usage_scenarios": "Authentication mechanisms that rely solely on IP addresses or DNS names for validation are vulnerable to spoofing attacks. This is common in network services and applications that implement custom authentication schemes without considering the possibility of IP or DNS spoofing.",
+    "design_challenges": "Designing authentication mechanisms that are resistant to spoofing requires a multi-faceted approach, as relying on a single factor (like IP address) is inherently insecure. The challenge lies in balancing security with usability and performance.",
+    "expanded_use_cases": "Applications and services that require secure authentication mechanisms, especially those accessible over the internet, must implement robust authentication schemes that cannot be bypassed through spoofing.",
+    "design_constraints": "The design must incorporate multiple authentication factors and should not rely solely on easily spoofable information like IP addresses or DNS names. Additionally, the solution must be performant and not introduce significant latency.",
+    "engineering_tradeoffs": "Implementing more secure authentication mechanisms may introduce complexity and potentially impact performance. However, the trade-off is necessary to prevent unauthorized access.",
+    "external_dependencies": "Secure authentication mechanisms may depend on external services or libraries for additional authentication factors (e.g., OAuth, certificates), which introduces dependencies on the reliability and security of these external components.",
+    "industry_best_practices": "Use multi-factor authentication (MFA), implement rate limiting and monitoring for suspicious activities, and avoid relying solely on IP addresses or DNS names for authentication. Regularly update and patch systems to protect against known vulnerabilities.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "String sourceIP = request.getRemoteAddr();if (sourceIP != null && sourceIP.equals(APPROVED_IP)) {authenticated = true;}"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "sd = socket(AF_INET, SOCK_DGRAM, 0);serv.sin_family = AF_INET;serv.sin_addr.s_addr = htonl(INADDR_ANY);servr.sin_port = htons(1008);bind(sd, (struct sockaddr *) & serv, sizeof(serv));\n                     while (1) {memset(msg, 0x0, MAX_MSG);clilen = sizeof(cli);if (inet_ntoa(cli.sin_addr)==getTrustedAddress()) {n = recvfrom(sd, msg, MAX_MSG, 0, (struct sockaddr *) & cli, &clilen);}}"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "// Example of safer authentication that doesn't rely solely on IP address\nif (user.providesValidCredentials() && request.isFromTrustedNetwork()) {\n    authenticated = true;\n}"
+      }
+    }
+  },
+  "347": {
+    "cwe_id": "347",
+    "cwe_title": "Improper Verification of Cryptographic Signature",
+    "description": "The product does not verify, or incorrectly verifies, the cryptographic signature for data.",
+    "extended_description": "",
+    "usage_scenarios": "This vulnerability commonly appears in scenarios where software processes data from untrusted sources without verifying the authenticity or integrity of the data through cryptographic signatures. Examples include downloading and executing code, processing configuration files, or accepting data over a network.",
+    "design_challenges": "Ensuring that all data from untrusted sources is properly verified without significantly impacting performance or user experience is a key challenge. Developers must balance security with usability.",
+    "expanded_use_cases": "Use cases include secure boot processes, software updates, and secure communication protocols where the integrity and authenticity of data are critical.",
+    "design_constraints": "Systems must be designed to handle the additional computational overhead of cryptographic verification and manage keys securely to prevent unauthorized access or modification.",
+    "engineering_tradeoffs": "The trade-off involves the computational cost and complexity of implementing cryptographic verification versus the risk of executing untrusted or malicious code.",
+    "external_dependencies": "Dependencies include cryptographic libraries for signature verification and key management systems for storing and accessing public keys securely.",
+    "industry_best_practices": "Best practices include always verifying cryptographic signatures for data from untrusted sources, using secure and up-to-date cryptographic libraries, and implementing proper key management practices.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "File f = new File(downloadedFilePath);JarFile jf = new JarFile(f);"
+      },
+      "attack_example": {
+        "language": "text",
+        "code": "An attacker could replace a legitimate JAR file with a malicious one. Without signature verification, the malicious code would be executed."
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "File f = new File(downloadedFilePath);JarFile jf = new JarFile(f, true); // The 'true' parameter enables signature verification"
+      }
+    }
+  },
+  "209": {
+    "cwe_id": "209",
+    "cwe_title": "Generation of Error Message Containing Sensitive Information",
+    "description": "The product generates an error message that includes sensitive information about its environment, users, or associated data.",
+    "extended_description": "This vulnerability occurs when error messages reveal details that could be exploited by attackers, such as system paths, database structures, or user credentials. Such information can aid in further attacks, including SQL injection, path traversal, and unauthorized data access.",
+    "usage_scenarios": "Common in web applications, database interactions, and file system operations where error handling is not properly sanitized.",
+    "design_challenges": "Balancing detailed error messages for debugging with the need to avoid exposing sensitive information.",
+    "expanded_use_cases": "Applications that interact with databases, file systems, or external services and require robust error handling mechanisms.",
+    "design_constraints": "Error messages must be informative enough for debugging but must not expose sensitive information. This requires careful design of error handling and logging mechanisms.",
+    "engineering_tradeoffs": "Increased development time for implementing secure error handling vs. the risk of exposing sensitive information.",
+    "external_dependencies": "Dependencies on logging frameworks and error handling libraries that may not sanitize error messages by default.",
+    "industry_best_practices": "Implement generic error messages for users, log detailed errors securely, sanitize error messages, and use secure logging practices.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Java",
+        "code": "try {/.../}catch (Exception e) {System.out.println(e);}"
+      },
+      "attack_example": {
+        "language": "PHP",
+        "code": "try {openDbConnection();} catch (Exception $e) {echo 'Caught exception: ', $e->getMessage(), '\\n';echo 'Check credentials in config file at: ', $Mysql_config_location, '\\n';}"
+      },
+      "safe_code": {
+        "language": "Java",
+        "code": "try {/.../}catch (Exception e) {logger.error(\"An error occurred\", e); System.out.println(\"An error occurred. Please contact support.\");}"
+      }
+    }
+  },
+  "120": {
+    "cwe_id": "120",
+    "cwe_title": "Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')",
+    "description": "The product copies an input buffer to an output buffer without verifying that the size of the input buffer is less than the size of the output buffer, leading to a buffer overflow.",
+    "extended_description": "A buffer overflow condition exists when a product attempts to put more data in a buffer than it can hold, or when it attempts to put data in a memory area outside of the boundaries of a buffer. The simplest type of error, and the most common cause of buffer overflows, is the \"classic\" case in which the product copies the buffer without restricting how much is copied. Other variants exist, but the existence of a classic overflow strongly suggests that the programmer is not considering even the most basic of security protections.",
+    "usage_scenarios": "Buffer overflows can occur in any scenario where data is copied from one buffer to another without proper size checks. Common scenarios include user input processing, data parsing, and network communication.",
+    "design_challenges": "Ensuring that all data copying operations are performed with proper bounds checking can be challenging, especially in legacy systems or when using third-party libraries that do not enforce such checks.",
+    "expanded_use_cases": "Buffer overflows can be exploited to execute arbitrary code, crash the system, or leak sensitive information. They are a common attack vector in software exploitation.",
+    "design_constraints": "Developers must ensure that all data copying operations are performed with bounds checking. This may require redesigning data structures or interfaces to accommodate size information.",
+    "engineering_tradeoffs": "Adding bounds checking can introduce performance overhead and complexity. However, the security benefits generally outweigh these costs.",
+    "external_dependencies": "Use of unsafe functions like strcpy, gets, and scanf can introduce buffer overflow vulnerabilities. Developers should prefer safer alternatives provided by modern libraries.",
+    "industry_best_practices": "Use safe string handling functions (e.g., strncpy instead of strcpy), perform input validation, and employ static and dynamic analysis tools to detect potential buffer overflows.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "char last_name[20];printf (\"Enter your last name: \");scanf (\"%s\", last_name);"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "void manipulate_string(char * string){char buf[24];strcpy(buf, string);...}"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "char last_name[20];printf (\"Enter your last name: \");fgets(last_name, sizeof(last_name), stdin);"
+      }
+    }
+  },
+  "590": {
+    "cwe_id": "590",
+    "cwe_title": "Free of Memory not on the Heap",
+    "description": "The product calls free() on a pointer to memory that was not allocated using associated heap allocation functions such as malloc(), calloc(), or realloc().",
+    "extended_description": "When free() is called on an invalid pointer, the program's memory management data structures may become corrupted. This corruption can cause the program to crash or, in some circumstances, an attacker may be able to cause free() to operate on controllable memory locations to modify critical program variables or execute code.",
+    "usage_scenarios": "This vulnerability typically occurs in C/C++ applications where memory management is manual and developers mistakenly attempt to free memory that was not dynamically allocated.",
+    "design_challenges": "Ensuring that all memory freed was dynamically allocated and tracking the lifecycle of dynamically allocated memory to prevent double-free or freeing non-heap memory.",
+    "expanded_use_cases": "Applications that manually manage memory in C/C++ are susceptible, especially those with complex memory management patterns or those that mix stack, global, and heap allocations.",
+    "design_constraints": "Developers must carefully track the source of each memory allocation and ensure that only dynamically allocated memory is freed.",
+    "engineering_tradeoffs": "Manual memory management offers performance benefits but increases the risk of memory management errors. Automated solutions like garbage collection reduce these risks but may impact performance.",
+    "external_dependencies": "This vulnerability is inherent to languages that allow manual memory management, such as C and C++. External tools like static analyzers can help detect potential issues.",
+    "industry_best_practices": "Use static analysis tools to detect potential invalid free operations. Prefer smart pointers or garbage collection where possible. Educate developers on proper memory management practices.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "void foo(){\n    record_t bar[MAX_SIZE];\n    /* do something interesting with bar */\n    free(bar);\n}"
+      },
+      "attack_example": {
+        "language": "C",
+        "code": "record_t bar[MAX_SIZE]; //Global var\nvoid foo(){\n    /* do something interesting with bar */\n    free(bar);\n}"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "void foo(){\n    record_t *bar = (record_t*)malloc(MAX_SIZE*sizeof(record_t));\n    /* do something interesting with bar */\n    free(bar);\n}"
+      }
+    }
+  },
+  "323": {
+    "cwe_id": "323",
+    "cwe_title": "Reusing a Nonce, Key Pair in Encryption",
+    "description": "Nonces should be used for the present occasion and only once.",
+    "extended_description": "",
+    "usage_scenarios": "Encryption processes where a nonce is used to ensure the uniqueness of each encryption operation, such as in password encryption before transmission over a network or in command authentication to a remote server.",
+    "design_challenges": "Ensuring that each nonce is unique and used only once, especially in distributed systems where coordination between components is necessary to prevent reuse.",
+    "expanded_use_cases": "Secure communication protocols, authentication mechanisms, and any cryptographic operation requiring freshness to prevent replay attacks.",
+    "design_constraints": "The system must have a reliable source of randomness or a method to generate unique nonces for each operation without reuse.",
+    "engineering_tradeoffs": "Increased complexity in system design to manage nonce uniqueness versus the risk of security vulnerabilities from nonce reuse.",
+    "external_dependencies": "Cryptographic libraries or hardware that provide secure random number generation for nonce creation.",
+    "industry_best_practices": "Use cryptographically secure random number generators for nonce creation; implement mechanisms to track used nonces and prevent their reuse; consider using time-based or counter-based nonces where appropriate.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C",
+        "code": "void encryptAndSendPassword(char *password){char *nonce = \"bad\";...char *data = (unsigned char*)malloc(20);int para_size = strlen(nonce) + strlen(password);char *paragraph = (char*)malloc(para_size);SHA1((const unsigned char*)paragraph,parsize,(unsigned char*)data);sendEncryptedData(data)}"
+      },
+      "attack_example": {
+        "language": "C++",
+        "code": "String command = new String(\"some command to execute\");MessageDigest nonce = MessageDigest.getInstance(\"SHA\");nonce.update(String.valueOf(\"bad nonce\"));byte[] nonce = nonce.digest();MessageDigest password = MessageDigest.getInstance(\"SHA\");password.update(nonce + \"secretPassword\");byte[] digest = password.digest();sendCommand(digest, command)"
+      },
+      "safe_code": {
+        "language": "C",
+        "code": "void encryptAndSendPassword(char *password){char *nonce = generateSecureNonce();...char *data = (unsigned char*)malloc(20);int para_size = strlen(nonce) + strlen(password);char *paragraph = (char*)malloc(para_size);SHA1((const unsigned char*)paragraph,parsize,(unsigned char*)data);sendEncryptedData(data)}"
+      }
+    }
+  },
+  "554": {
+    "cwe_id": "554",
+    "cwe_title": "ASP.NET Misconfiguration: Not Using Input Validation Framework",
+    "description": "The ASP.NET application does not use an input validation framework.",
+    "extended_description": "This vulnerability occurs when an ASP.NET application fails to implement a robust input validation framework, leaving it susceptible to various injection attacks such as SQL injection, cross-site scripting (XSS), and command injection. Without proper validation, attackers can manipulate input fields to execute malicious code or access unauthorized data.",
+    "usage_scenarios": "This vulnerability is particularly relevant in web applications that process user input, such as forms, search fields, and any interactive elements that accept data from users.",
+    "design_challenges": "Implementing a comprehensive input validation framework can be challenging due to the need to balance security with usability and performance. Developers must ensure that validation does not overly restrict legitimate input or degrade application performance.",
+    "expanded_use_cases": "Beyond simple form validation, input validation frameworks are crucial for APIs, file uploads, and any system that processes data from untrusted sources.",
+    "design_constraints": "The design must accommodate various types of input validation, including type checking, length validation, pattern matching, and sanitization of potentially malicious input.",
+    "engineering_tradeoffs": "While adding input validation can increase development time and complexity, it significantly reduces the risk of security vulnerabilities. The trade-off involves balancing thorough validation with application responsiveness and user experience.",
+    "external_dependencies": "ASP.NET provides built-in validation controls and frameworks such as Data Annotations and ModelState validation. Third-party libraries like FluentValidation can also be used for more complex validation scenarios.",
+    "industry_best_practices": "Best practices include using a combination of client-side and server-side validation, employing whitelisting over blacklisting for input validation, and regularly updating validation rules to address emerging threats.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "C#",
+        "code": "string userInput = Request.Form[\"userInput\"];\n// No validation performed on userInput"
+      },
+      "attack_example": {
+        "language": "SQL",
+        "code": "' OR '1'='1"
+      },
+      "safe_code": {
+        "language": "C#",
+        "code": "[Required]\n[StringLength(100, MinimumLength = 1)]\npublic string UserInput { get; set; }"
+      }
+    }
+  },
+  "95": {
+    "cwe_id": "95",
+    "cwe_title": "Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')",
+    "description": "The product receives input from an upstream component, but it does not neutralize or incorrectly neutralizes code syntax before using the input in a dynamic evaluation call (e.g. \"eval\").",
+    "extended_description": "This may allow an attacker to execute arbitrary code, or at least modify what code can be executed.",
+    "usage_scenarios": "Dynamic evaluation of code is often used in scripting languages for flexibility and to reduce code complexity, especially when dealing with dynamic function calls or data structure manipulations.",
+    "design_challenges": "Balancing the flexibility of dynamic code evaluation with the security risks it introduces, especially when processing untrusted input.",
+    "expanded_use_cases": "Dynamic configuration adjustments, runtime code generation, and simplifying complex conditional logic.",
+    "design_constraints": "Avoiding the use of dynamic evaluation functions like eval() with untrusted input to prevent code injection vulnerabilities.",
+    "engineering_tradeoffs": "The convenience and power of dynamic code evaluation must be weighed against the potential security vulnerabilities it introduces.",
+    "external_dependencies": "Reliance on language features that support dynamic code evaluation, such as eval() in Perl and Python.",
+    "industry_best_practices": "Avoid using eval() with untrusted input; use safer alternatives like direct function calls or parsing libraries that do not execute code. Implement input validation and sanitization.",
+    "demonstrative_examples": {
+      "unsafe_code": {
+        "language": "Perl",
+        "code": "use CGI qw(:standard);\n                     sub config_file_add_key {\n                        my ($fname, $key, $arg) = @_;\n                           # code to add a field/key to a file goes here\n                        \n                     }\n                     sub config_file_set_key {\n                        my ($fname, $key, $arg) = @_;\n                           # code to set key to a particular file goes here\n                        \n                     }\n                     sub config_file_delete_key {\n                        my ($fname, $key, $arg) = @_;\n                           # code to delete key from a particular file goes here\n                        \n                     }\n                     sub handleConfigAction {\n                        my ($fname, $action) = @_;my $key = param('key');my $val = param('val');\n                        \n                           # this is super-efficient code, especially if you have to invoke\n                           # any one of dozens of different functions!\n                           my $code = \"config_file_$action_key(\\$fname, \\$key, \\$val);\";eval($code);\n                     }\n                     $configfile = \"/home/cwe/config.txt\";print header;if (defined(param('action'))) {handleConfigAction($configfile, param('action'));}else {print \"No action specified!\\n\";}"
+      },
+      "attack_example": {
+        "language": "Python",
+        "code": "__import__('subprocess').getoutput('rm -r *')"
+      },
+      "safe_code": {
+        "language": "Python",
+        "code": "def main():\n                     \n                     sum = 0\n                     numbers = input(\"Enter a space-separated list of numbers: \").split(\" \")\n                     try:\n                        \n                        for num in numbers:\n                           \n                           sum = sum + int(num)\n                           \n                        print(f\"Sum of {numbers} = {sum}\")\n                        \n                     except ValueError:\n                        \n                        print(\"Error: invalid input\")\n                        \n                     \n                  main()"
+      }
+    }
+  }
+}
