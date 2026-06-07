@@ -1,6 +1,6 @@
 # SecAware
 
-This repository contains the code and released experiment artifacts for:
+This repository contains the code and Zenodo-hosted experiment artifacts for:
 
 > SecAware: Awareness Reinforced Security Testing for LLM-based Code Generation
 
@@ -30,8 +30,13 @@ _Figure: The overall framework of SecAware._
 - `code/fuzzer/`: SecAware fuzzing loop, mutation logic, and selection policies.
 - `code/llm/`: target, mutator, and backend wrappers for local, API, Ollama, and vLLM deployments.
 - `code/utils/`: oracle, sandbox, prompt templates, vulnerability analysis, and functional validation utilities.
-- `RQs/`: released raw experiment outputs for the reported RQ studies.
 - `requirements.txt`: Python dependencies.
+
+## Experiment Artifacts
+
+Raw experimental outputs are distributed through [Zenodo](https://zenodo.org/records/20582932) rather than versioned directly in this repository. The `RQs/` directory keeps the download instructions and expected artifact layout:
+
+- [RQs/README.md](./RQs/README.md)
 
 ## Evaluated LLMs
 
@@ -193,9 +198,11 @@ CUDA_VISIBLE_DEVICES=0,1 python -m vllm.entrypoints.openai.api_server \
 
 ## Reproducing RQ Experiments
 
+Download the released raw artifacts as described in [RQs/README.md](./RQs/README.md) if you need to inspect the experiment CSVs or rerun downstream analyses.
+
 ### RQ1
 
-Run SecAware with `--select_policy mcts_cwe`, `--ablation_config full`, and `--max_query 1000` for each target LLM. Baseline outputs released with the repository are stored under `RQs/RQ1/`.
+Run SecAware with `--select_policy mcts_cwe`, `--ablation_config full`, and `--max_query 1000` for each target LLM.
 
 ### RQ2
 
@@ -218,7 +225,6 @@ python run_secaware.py \
   --max_query 1000
 ```
 
-Released RQ2 outputs are stored under `RQs/RQ2/`.
 
 ### RQ3
 
